@@ -1,0 +1,103 @@
+# =========================
+# GLOBAL
+# =========================
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# VS Code settings
+.vscode/
+
+# Python virtualenvs (if created in root)
+env/
+venv/
+.venv/
+
+# Logs
+*.log
+*.pot
+
+# Environment variables
+.env
+.env.*
+
+# =========================
+# BACKEND (Django)
+# =========================
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/*.sqlite3
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/  # if you're collecting static here
+backend/static/       # if this is generated, not source
+backend/local_settings.py
+
+# Django migrations (optional: keep if you want version control)
+backend/**/migrations/
+!backend/**/migrations/__init__.py
+
+# Coverage/test data
+backend/.coverage
+backend/htmlcov/
+backend/coverage.xml
+
+# Pytest cache
+backend/.pytest_cache/
+backend/.tox/
+backend/.mypy_cache/
+
+# IDEs
+backend/.idea/
+
+# =========================
+# FRONTEND (React + Cypress)
+# =========================
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+# Cypress output
+frontend/cypress/screenshots/
+frontend/cypress/videos/
+
+# Test coverage
+frontend/coverage/
+
+# IDEs
+frontend/.idea/
+frontend/.parcel-cache/
+
+# Optional (e.g., if using Yarn or npm lock files)
+# Uncomment one if not using both
+# frontend/yarn.lock
+# frontend/package-lock.json
+
+# =========================
+# GITHUB ACTIONS
+# =========================
+# Nothing usually needs to be ignored inside .github/workflows/
+# But you can exclude local test artifacts if any
+.github/**/*.log
+.github/**/*.tmp
+
+# =========================
+# OTHER OPTIONAL ENTRIES
+# =========================
+# macOS Finder tags
+*.DS_Store
+
+# Windows thumbnail cache
+ehthumbs.db
+Desktop.ini
+
+# Python bytecode anywhere
+**/__pycache__/
+**/*.py[cod]
+
+# Ignore compiled Python files or cache files anywhere
+*.pyc
+*.pyo
+*.pyd
