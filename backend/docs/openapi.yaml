@@ -1,0 +1,135 @@
+openapi: 3.0.4
+info:
+  title: Simplex Manager
+  description: Manager for my tutoring business.
+  version: 0.0.1
+
+
+servers:
+  - url: http://localhost:8000/api/v1/
+    description: Localhost to develop and test
+
+paths:
+  /authentication/login/:
+    post:
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema:
+              $ref: "#/components/responses/LoginResponse"
+      responses:
+        "200":
+          dsecription: the token
+          content:
+            application/json:
+              schema:
+                $ref: "#components/schemas/TokenResponse"
+  /groups/{id}/:
+    security:
+      - cookieAuth: []
+    get:
+      summary: get a specific group
+      description: get information about the group
+      parameters:
+        - in: path
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The group requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+  /groups/:
+    security:
+      - cookieAuth: []
+    get:
+      summary: get all groups for this specific user
+      description: get all groups for this specific user
+      responses:
+        "200":
+          description: The groups requested
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+  /groups/{id}/markroll/:
+    security:
+      - cookieAuth: []
+    post:
+      parameters:
+        - in: path
+          schema:
+            type: integer
+      summary: mark the roll
+      description: Mark the roll for the specific class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requests/rollMarkRequest'
+      responses:
+        "200":
+          description: The roll mark has been successfully recorded.
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "The roll has been marked successfully."
+components:
+  requests:
+    rollMarkRequest:
+      type: object
+      properties:
+        studentId:
+          type: boolean
+      example: {
+        "1232": false,
+        "4255": false,
+        "2363": true,
+      }
+
+  schemas:
+    Group:
+      type: object
+      properties:
+        id: 
+          type: string
+        name: 
+          type: string
+        participants: 
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+        name: 
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+  responses:
+    LoginResponse:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+  /groups/{id}/:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+        

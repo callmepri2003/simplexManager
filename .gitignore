@@ -33,10 +33,6 @@ backend/staticfiles/  # if you're collecting static here
 backend/static/       # if this is generated, not source
 backend/local_settings.py
 
-# Django migrations (optional: keep if you want version control)
-backend/**/migrations/
-!backend/**/migrations/__init__.py
-
 # Coverage/test data
 backend/.coverage
 backend/htmlcov/
