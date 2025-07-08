@@ -38,6 +38,14 @@ def webhooks_view(request):
         webhookHandler = UpdateCustomerHandler()
     elif event['type'] == 'customer.deleted':
         webhookHandler = DeleteCustomerHandler()
+    elif event['type'] == 'price.created':
+        webhookHandler = CreatePriceHandler()
+    elif event['type'] == 'price.updated':
+        webhookHandler = UpdatePriceHandler()
+    elif event['type'] == 'price.deleted':
+        webhookHandler = DeletePriceHandler()
+    else:
+        return HttpResponse(status=200)
     
     webhookHandler.handle(event['data']['object'])
 
@@ -50,6 +58,7 @@ class WebhookHandler(ABC):
 
 class CreateProductHandler(WebhookHandler):
     def handle(self, data):
+        print(data)
         new_product = StripeProd(stripeId=data['id'], defaultPriceId=data['default_price'], name=data['name'])
         new_product.save()
 
@@ -82,3 +91,26 @@ class DeleteCustomerHandler(WebhookHandler):
         parent = Parent.objects.get(stripeId=data['id'])
         parent.is_active = False
         parent.save()
+class CreatePriceHandler(WebhookHandler):
+    def handle(self, data):
+        print(data)
+        try:
+            product = StripeProd.objects.get(stripeId=data['product'])
+            product.defaultPriceId = data['id']
+            product.save()
+        except StripeProd.DoesNotExist:
+            print(f"Product {data['product']} not found for price {data['id']}")
+
+class UpdatePriceHandler(WebhookHandler):
+    def handle(self, data):
+        pass
+
+class DeletePriceHandler(WebhookHandler):
+    def handle(self, data):
+        # If the deleted price was a default price, we might want to clear it
+        try:
+            product = StripeProd.objects.get(defaultPriceId=data['id'])
+            product.defaultPriceId = None
+            product.save()
+        except StripeProd.DoesNotExist:
+            pass

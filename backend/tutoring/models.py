@@ -1,5 +1,8 @@
 from django.db import models
+from django.dispatch import receiver
 from stripeInt.models import StripeProd
+from django.db.models.signals import post_save
+
 
 class Group(models.Model):
   lesson_length = models.IntegerField(default=1)
@@ -20,8 +23,6 @@ class BasketItem(models.Model):
   product = models.ForeignKey(StripeProd, on_delete=models.CASCADE, related_name="basketItems")
   quantity = models.IntegerField()
 
-from django.db import models
-
 class Parent(models.Model):
     PAYMENT_FREQUENCY_CHOICES = [
         ('weekly', 'Weekly'),
@@ -39,6 +40,16 @@ class Parent(models.Model):
         choices=PAYMENT_FREQUENCY_CHOICES,
         default='half-termly',
     )
+
+@receiver(post_save, sender=Parent)
+def create_parent_basket(sender, instance, created, **kwargs):
+    """
+    Creates an empty basket for a parent when the parent is first created.
+    """
+    if created and not instance.basket:
+        basket = Basket.objects.create()
+        instance.basket = basket
+        instance.save()
 
 class Student(models.Model):
   group = models.ManyToManyField(Group, related_name='students')
