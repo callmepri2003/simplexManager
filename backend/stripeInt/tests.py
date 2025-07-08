@@ -2,6 +2,8 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 import stripe
 
+from tutoring.models import Parent
+
 from .models import StripeProd
 
 class WebHooksTest(TestCase):
@@ -109,4 +111,79 @@ class WebHooksTest(TestCase):
 
     product = StripeProd.objects.get(stripeId=randomId)
     self.assertFalse(product.is_active)
-    
+  
+  @patch("stripe.Webhook.construct_event")
+  def testCustomerCreated_HappyPath(self, mock_construct_event):
+    randomId = "cus_SdmWpjsahaAHih"
+    mock_construct_event.return_value = {
+      'type': 'customer.created',
+      'data': {
+        'object' : {
+          'id': randomId,
+          'name': 'testCustomer1'
+        }
+      }
+    }
+
+    res = self.client.post(
+      self.url,
+      data=b"{}",
+      content_type="application/json",
+      HTTP_STRIPE_SIGNATURE="fake_signature"
+    )
+
+    parent = Parent.objects.get(stripeId=randomId)
+    self.assertIsNotNone(parent)
+    self.assertTrue(parent.name, "testCustomer1")
+
+  
+  @patch("stripe.Webhook.construct_event")
+  def testCustomerUpdated_HappyPath(self, mock_construct_event):
+    randomId = "cus_d73hg92hg82hgg0"
+    originalParent = Parent(stripeId=randomId, name="testCustomer")
+    originalParent.save()
+    mock_construct_event.return_value = {
+      'type': 'customer.updated',
+      'data': {
+        'object' : {
+          'id': randomId,
+          'name': 'testCustomerWithaChangedName'
+        }
+      }
+    }
+
+    res = self.client.post(
+      self.url,
+      data=b"{}",  # Doesn't matter – it's ignored due to mocking
+      content_type="application/json",
+      HTTP_STRIPE_SIGNATURE="fake_signature"
+    )
+
+    parent = Parent.objects.get(stripeId=randomId)
+    self.assertEqual(parent.name, "testCustomerWithaChangedName")
+
+  @patch("stripe.Webhook.construct_event")
+  def testCustomerDeleted_HappyPath(self, mock_construct_event):
+    randomId = "cus_d73hg92hg82hgg0"
+    originalParent = Parent(stripeId=randomId, name="testCustomer")
+    originalParent.save()
+    self.assertTrue(originalParent.is_active)
+    mock_construct_event.return_value = {
+      'type': 'customer.deleted',
+      'data': {
+        'object' : {
+          'id': randomId,
+          'name': 'testCustomer'
+        }
+      }
+    }
+
+    res = self.client.post(
+      self.url,
+      data=b"{}",  # Doesn't matter – it's ignored due to mocking
+      content_type="application/json",
+      HTTP_STRIPE_SIGNATURE="fake_signature"
+    )
+
+    parent = Parent.objects.get(stripeId=randomId)
+    self.assertFalse(parent.is_active)

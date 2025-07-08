@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 import os
 from dotenv import load_dotenv
 import stripe
+from tutoring.models import Parent
 from .models import StripeProd
 
 load_dotenv()
@@ -31,6 +32,12 @@ def webhooks_view(request):
         webhookHandler = UpdateProductHandler()
     elif event['type'] == 'product.deleted':
         webhookHandler = DeleteProductHandler()
+    elif event['type'] == 'customer.created':
+        webhookHandler = CreateCustomerHandler()
+    elif event['type'] == 'customer.updated':
+        webhookHandler = UpdateCustomerHandler()
+    elif event['type'] == 'customer.deleted':
+        webhookHandler = DeleteCustomerHandler()
     
     webhookHandler.handle(event['data']['object'])
 
@@ -57,3 +64,20 @@ class DeleteProductHandler(WebhookHandler):
         product = StripeProd.objects.get(stripeId=data['id'])
         product.is_active = False
         product.save()
+
+class CreateCustomerHandler(WebhookHandler):
+    def handle(self, data):
+        newParent = Parent(stripeId=data['id'], name=str(data['name']))
+        newParent.save()
+
+class UpdateCustomerHandler(WebhookHandler):
+    def handle(self, data):
+        parent = Parent.objects.get(stripeId=data['id'])
+        parent.name = data['name']
+        parent.save()
+
+class DeleteCustomerHandler(WebhookHandler):
+    def handle(self, data):
+        parent = Parent.objects.get(stripeId=data['id'])
+        parent.is_active = False
+        parent.save()
