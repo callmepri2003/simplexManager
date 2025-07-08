@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 import os
 from dotenv import load_dotenv
 import stripe
+from .models import StripeProd
 
 load_dotenv()
 
@@ -42,7 +43,8 @@ class WebhookHandler(ABC):
 
 class CreateProductHandler(WebhookHandler):
     def handle(self, data):
-        print("Creating product:", data)
+        new_product = StripeProd(stripeId=data['id'], name=data['name'])
+        new_product.save()
 
 class UpdateProductHandler(WebhookHandler):
     def handle(self, data):
