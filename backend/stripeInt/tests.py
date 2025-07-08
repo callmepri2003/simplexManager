@@ -56,3 +56,57 @@ class WebHooksTest(TestCase):
     )
     with self.assertRaises(StripeProd.DoesNotExist):
       product = StripeProd.objects.get(stripeId=randomId)
+    
+  @patch("stripe.Webhook.construct_event")
+  def testProductUpdated_HappyPath(self, mock_construct_event):
+    randomId = "prod_d73hg92hg82hgg0"
+    originalProduct = StripeProd(stripeId=randomId, name="testProduct")
+    originalProduct.save()
+    mock_construct_event.return_value = {
+      'type': 'product.updated',
+      'data': {
+        'object' : {
+          'id': randomId,
+          'name': 'testProductWithaChangedName'
+        }
+      }
+    }
+
+    res = self.client.post(
+      self.url,
+      data=b"{}",  # Doesn't matter – it's ignored due to mocking
+      content_type="application/json",
+      HTTP_STRIPE_SIGNATURE="fake_signature"
+    )
+
+    product = StripeProd.objects.get(stripeId=randomId)
+    self.assertEqual(product.name, "testProductWithaChangedName")
+
+  @patch("stripe.Webhook.construct_event")
+  def testProductDeleted_HappyPath(self, mock_construct_event):
+    randomId = "prod_d73hg92hg82hgg0"
+    originalProduct = StripeProd(stripeId=randomId, name="testProduct")
+    originalProduct.save()
+
+    self.assertTrue(originalProduct.is_active)
+
+    mock_construct_event.return_value = {
+      'type': 'product.deleted',
+      'data': {
+        'object' : {
+          'id': randomId,
+          'name': 'testProduct'
+        }
+      }
+    }
+
+    res = self.client.post(
+      self.url,
+      data=b"{}",  # Doesn't matter – it's ignored due to mocking
+      content_type="application/json",
+      HTTP_STRIPE_SIGNATURE="fake_signature"
+    )
+
+    product = StripeProd.objects.get(stripeId=randomId)
+    self.assertFalse(product.is_active)
+    

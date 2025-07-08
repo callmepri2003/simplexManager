@@ -48,8 +48,12 @@ class CreateProductHandler(WebhookHandler):
 
 class UpdateProductHandler(WebhookHandler):
     def handle(self, data):
-        print("Updating product:", data)
+        product = StripeProd.objects.get(stripeId=data['id'])
+        product.name = data['name']
+        product.save()
 
 class DeleteProductHandler(WebhookHandler):
     def handle(self, data):
-        print("Deleting product:", data)
+        product = StripeProd.objects.get(stripeId=data['id'])
+        product.is_active = False
+        product.save()
