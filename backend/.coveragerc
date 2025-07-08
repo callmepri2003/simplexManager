@@ -70,7 +70,6 @@ exclude_lines =
     # Don't complain about Django's standard patterns
     class .*\(.*Protocol.*\):
     @require_http_methods
-    @csrf_exempt
     
     # Skip __str__ and __unicode__ methods
     def __str__
