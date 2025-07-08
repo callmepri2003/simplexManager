@@ -1,0 +1,84 @@
+[run]
+source = .
+omit = 
+    # Django boilerplate
+    manage.py
+    */settings/*
+    */migrations/*
+    */venv/*
+    */env/*
+    */virtualenv/*
+    
+    # Django admin customizations (optional - remove if you test admin)
+    */admin.py
+    
+    # Django apps boilerplate
+    */apps.py
+    */wsgi.py
+    */asgi.py
+    
+    # Test files themselves
+    */tests/*
+    */test_*.py
+    */*test*.py
+    
+    # Third party packages
+    */site-packages/*
+    */lib/python*/site-packages/*
+    
+    # Common directories to ignore
+    */node_modules/*
+    */static/*
+    */media/*
+    */staticfiles/*
+    
+    # Configuration files
+    */conftest.py
+    */pytest.ini
+    */tox.ini
+    
+    # Django generated files
+    */locale/*
+    */templates/*
+    
+    # Development tools
+    */fixtures/*
+    */scripts/*
+    */docs/*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+    
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+    
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+    
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+    
+    # Don't complain about abstract methods
+    @(abc\.)?abstractmethod
+    
+    # Don't complain about Django's standard patterns
+    class .*\(.*Protocol.*\):
+    @require_http_methods
+    @csrf_exempt
+    
+    # Skip __str__ and __unicode__ methods
+    def __str__
+    def __unicode__
+
+ignore_errors = True
+show_missing = True
+skip_covered = False
+
+[html]
+directory = htmlcov
