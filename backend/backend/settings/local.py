@@ -26,7 +26,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'stripeInt',
-    'tutoring'
+    'tutoring',
+    'django_q'
 ]
 
 MIDDLEWARE = [
@@ -116,3 +117,17 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Add Django-Q configuration at the end of settings.py
+Q_CLUSTER = {
+    'name': 'backend',
+    'workers': 2,
+    'recycle': 500,
+    'timeout': 60,
+    'compress': True,
+    'save_limit': 250,
+    'queue_limit': 500,
+    'cpu_affinity': 1,
+    'label': 'Django Q2',
+    'orm': 'default',  # Uses your existing PostgreSQL database
+}
