@@ -19,6 +19,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testProduct1'
         }
       }
@@ -43,6 +44,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testProduct1'
         }
       }
@@ -69,6 +71,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testProductWithaChangedName'
         }
       }
@@ -97,6 +100,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testProduct'
         }
       }
@@ -120,6 +124,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testCustomer1'
         }
       }
@@ -147,6 +152,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testCustomerWithaChangedName'
         }
       }
@@ -173,6 +179,7 @@ class WebHooksTest(TestCase):
       'data': {
         'object' : {
           'id': randomId,
+          'default_price': 'price_8qwbf',
           'name': 'testCustomer'
         }
       }

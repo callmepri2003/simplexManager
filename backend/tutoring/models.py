@@ -20,11 +20,25 @@ class BasketItem(models.Model):
   product = models.ForeignKey(StripeProd, on_delete=models.CASCADE, related_name="basketItems")
   quantity = models.IntegerField()
 
+from django.db import models
+
 class Parent(models.Model):
-  name = models.CharField(max_length=100)
-  stripeId = models.CharField(max_length=100)
-  basket = models.OneToOneField(Basket, on_delete=models.DO_NOTHING, null=True)
-  is_active = models.BooleanField(default=True)
+    PAYMENT_FREQUENCY_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('fortnightly', 'Fortnightly'),
+        ('half-termly', 'Half-Termly'),
+        ('termly', 'Termly'),
+    ]
+
+    name = models.CharField(max_length=100)
+    stripeId = models.CharField(max_length=100)
+    basket = models.OneToOneField('Basket', on_delete=models.DO_NOTHING, null=True)
+    is_active = models.BooleanField(default=True)
+    payment_frequency = models.CharField(
+        max_length=20,
+        choices=PAYMENT_FREQUENCY_CHOICES,
+        default='half-termly',
+    )
 
 class Student(models.Model):
   group = models.ManyToManyField(Group, related_name='students')
