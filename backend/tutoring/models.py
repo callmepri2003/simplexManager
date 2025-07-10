@@ -40,6 +40,7 @@ class Parent(models.Model):
         choices=PAYMENT_FREQUENCY_CHOICES,
         default='half-termly',
     )
+      
 
 @receiver(post_save, sender=Parent)
 def create_parent_basket(sender, instance, created, **kwargs):
