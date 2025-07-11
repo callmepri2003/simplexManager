@@ -26,7 +26,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'stripeInt',
-    'tutoring'
+    'tutoring',
+    'django_q'
 ]
 
 MIDDLEWARE = [
@@ -144,3 +145,13 @@ LOGGING = {
 }
 
 STATIC_ROOT = 'staticfiles'
+
+Q_CLUSTER = {
+    'name': 'DjangORM',
+    'workers': 4,
+    'timeout': 90,
+    'retry': 120,
+    'queue_limit': 50,
+    'bulk': 10,
+    'orm': 'default'
+}
