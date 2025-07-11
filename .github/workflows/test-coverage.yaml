@@ -29,6 +29,8 @@ jobs:
       DJANGO_SETTINGS_MODULE: backend.settings.cicd
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
       SECRET_KEY: test-secret-key-for-ci
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
     
     steps:
     - uses: actions/checkout@v4
