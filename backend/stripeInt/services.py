@@ -45,7 +45,8 @@ def generateInvoices(*, frequency, amount_of_weeks, ):
             invoice = stripe.Invoice.create(
                 customer=parent.stripeId,
                 auto_advance=True,
-                collection_method="send_invoice"
+                collection_method="send_invoice",
+                days_until_due=amount_of_weeks * 7
             )
 
             for item in basket_items:
