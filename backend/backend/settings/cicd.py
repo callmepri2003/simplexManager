@@ -131,3 +131,5 @@ LOGGING = {
         },
     },
 }
+
+TIME_ZONE = 'Australia/Sydney'

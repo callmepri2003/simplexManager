@@ -156,3 +156,5 @@ Q_CLUSTER = {
     'bulk': 10,
     'orm': 'default'
 }
+
+TIME_ZONE = 'Australia/Sydney'
