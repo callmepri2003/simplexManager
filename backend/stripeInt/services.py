@@ -7,8 +7,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-def generateFortnightlyInvoices():
-    logger.info("Starting fortnightly invoice generation")
+def generateInvoices(*, frequency, amount_of_weeks, ):
+    logger.info(f"Starting {frequency} invoice generation")
     
     # Set up Stripe API key
     stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
@@ -19,8 +19,8 @@ def generateFortnightlyInvoices():
     logger.debug("Stripe API key loaded successfully")
     
     # Get all parents with fortnightly payment frequency
-    parents = Parent.objects.filter(payment_frequency="fortnightly")
-    logger.info(f"Found {parents.count()} parents with fortnightly payment frequency")
+    parents = Parent.objects.filter(payment_frequency=frequency)
+    logger.info(f"Found {parents.count()} parents with {frequency} payment frequency")
     
     # Process each parent
     for parent in parents:
@@ -40,26 +40,28 @@ def generateFortnightlyInvoices():
             continue
         
         try:
-            # Create invoice items first
-            for item in basket_items:
-                logger.debug(f"Creating invoice item for: {item.product} (quantity: {item.quantity})")
-                
-                # Get the price from Stripe to get the amount
-                price_obj = stripe.Price.retrieve(item.product.defaultPriceId)
-                
-                stripe.InvoiceItem.create(
-                    customer=parent.stripeId,
-                    unit_amount_decimal=price_obj.unit_amount,  # Amount in cents
-                    currency=price_obj.currency,
-                    description=f"Product: {item.product.stripeId}",
-                    quantity=item.quantity
-                )
-            
+            # Create invoice items
             # Then create the invoice (it will automatically include all pending invoice items)
             invoice = stripe.Invoice.create(
                 customer=parent.stripeId,
                 auto_advance=True
             )
+
+            for item in basket_items:
+                logger.debug(f"Creating invoice item for: {item.product} (quantity: {item.quantity})")
+
+                price_obj = stripe.Price.retrieve(item.product.defaultPriceId)
+                
+                stripe.InvoiceItem.create(
+                    customer=parent.stripeId,
+                    unit_amount_decimal=price_obj.unit_amount,
+                    currency=price_obj.currency,
+                    description=f"Product: {item.product.stripeId}",
+                    quantity=item.quantity * amount_of_weeks,
+                    invoice=invoice.id
+                )
+            
+            
             
             logger.info(f"Successfully created invoice {invoice.id} for parent {parent.id}")
             
@@ -71,3 +73,4 @@ def generateFortnightlyInvoices():
             continue
     
     logger.info("Completed fortnightly invoice generation")
+

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd

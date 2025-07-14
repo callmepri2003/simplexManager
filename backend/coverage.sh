@@ -1,0 +1,1 @@
+DJANGO_SETTINGS_MODULE='backend.settings.cicd' coverage run manage.py test
