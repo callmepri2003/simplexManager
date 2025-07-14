@@ -481,7 +481,7 @@ class ServicesTest(StaticLiveServerTestCase):
 
 
         '''
-        4.
+        4. TODO
         handles errors gracefully
         - trying to invoice inactive products
         - trying to invoice inactive parents
@@ -489,11 +489,12 @@ class ServicesTest(StaticLiveServerTestCase):
         '''
 
         '''
-        5.
+        5. TODO
         Make sure it doesn't generate invoices that try to automatically charge them
         Ensure correct metadata
         It should have the same data as is on the google sheets
         '''
+   
     @classmethod
     def _wait_for_server_ready(cls):
         """Wait for the live server to be ready to accept connections"""

@@ -44,7 +44,8 @@ def generateInvoices(*, frequency, amount_of_weeks, ):
             # Then create the invoice (it will automatically include all pending invoice items)
             invoice = stripe.Invoice.create(
                 customer=parent.stripeId,
-                auto_advance=True
+                auto_advance=True,
+                collection_method="send_invoice"
             )
 
             for item in basket_items:
