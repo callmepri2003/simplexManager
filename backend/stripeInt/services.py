@@ -8,7 +8,19 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-def generateInvoices(*, frequency, amount_of_weeks, ):
+def generateWeeklyInvoices():
+    generateInvoices(frequency="weekly", amount_of_weeks=1)
+
+def generateFortnightlyInvoices():
+    generateInvoices(frequency="fortnightly", amount_of_weeks=2)
+
+def generateHalfTermlyInvoices():
+    generateInvoices(frequency="half-termly", amount_of_weeks=5)
+
+def generateTermlyInvoices():
+    generateInvoices(frequency="termly", amount_of_weeks=10)
+
+def generateInvoices(*, frequency, amount_of_weeks ):
     logger.info(f"Starting {frequency} invoice generation")
     
     # Set up Stripe API key
