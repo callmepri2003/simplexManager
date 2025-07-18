@@ -85,7 +85,7 @@ def generateInvoices(*, frequency, amount_of_weeks ):
                     customer=parent.stripeId,
                     unit_amount_decimal=price_obj.unit_amount,
                     currency=price_obj.currency,
-                    description=f"Product: {item.product.stripeId}",
+                    description=f"Product: {item.product.name}",
                     quantity=item.quantity * amount_of_weeks,
                     invoice=invoice.id
                 )
