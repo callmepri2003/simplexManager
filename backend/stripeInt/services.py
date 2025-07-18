@@ -52,6 +52,14 @@ def generateInvoices(*, frequency, amount_of_weeks, ):
                     {
                         "name": "Billing Period",
                         "value": calculate_billing_period(amount_of_weeks)
+                    },
+                    {
+                        "name": "Payment Frequency",
+                        "value": frequency
+                    },
+                    {
+                        "name": "Hotel",
+                        "value": "Trivago"
                     }
                 ]
             )
