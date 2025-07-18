@@ -3,6 +3,7 @@ import stripe
 import os
 from dotenv import load_dotenv
 import logging
+from datetime import datetime, timedelta
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,13 @@ def generateInvoices(*, frequency, amount_of_weeks, ):
                 customer=parent.stripeId,
                 auto_advance=True,
                 collection_method="send_invoice",
-                days_until_due=amount_of_weeks * 7
+                days_until_due=amount_of_weeks * 7,
+                custom_fields=[
+                    {
+                        "name": "Billing Period",
+                        "value": calculate_billing_period(amount_of_weeks)
+                    }
+                ]
             )
 
             for item in basket_items:
@@ -76,3 +83,26 @@ def generateInvoices(*, frequency, amount_of_weeks, ):
     
     logger.info("Completed fortnightly invoice generation")
 
+def calculate_billing_period(amount_of_weeks):
+    """
+    Calculate human-readable billing period from today to today + amount_of_weeks (exclusive end date)
+    
+    Args:
+        amount_of_weeks (int): Number of weeks for the billing period
+        
+    Returns:
+        str: Formatted billing period (e.g., "Monday 19th July to Sunday 1st August")
+    """
+    start_date = datetime.now()
+    end_date = start_date + timedelta(weeks=amount_of_weeks, days=-1)
+    
+    def get_ordinal_suffix(day):
+        if 10 <= day % 100 <= 20:
+            return "th"
+        else:
+            return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    
+    start_formatted = start_date.strftime(f"%A %d{get_ordinal_suffix(start_date.day)} %B")
+    end_formatted = end_date.strftime(f"%A %d{get_ordinal_suffix(end_date.day)} %B")
+    
+    return f"{start_formatted} to {end_formatted}"
