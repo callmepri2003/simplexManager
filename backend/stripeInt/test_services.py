@@ -246,7 +246,6 @@ class ServicesTest(StaticLiveServerTestCase):
         with open("invoice_ids.txt", "w") as f:
             while True:
                 for invoice in invoices['data']:
-                    f.write(invoice['customer'] + "\n")
                     if parent1.stripeId == invoice['customer']:
                         parent1Found = True
                         line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
