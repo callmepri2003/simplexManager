@@ -26,7 +26,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'stripeInt',
-    'tutoring'
+    'tutoring',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -133,3 +134,9 @@ LOGGING = {
 }
 
 TIME_ZONE = 'Australia/Sydney'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}

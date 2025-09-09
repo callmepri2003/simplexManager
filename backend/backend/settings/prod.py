@@ -27,7 +27,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'stripeInt',
     'tutoring',
-    'django_q'
+    'django_q',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -158,3 +159,9 @@ Q_CLUSTER = {
 }
 
 TIME_ZONE = 'Australia/Sydney'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}

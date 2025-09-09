@@ -20,6 +20,8 @@ import { Link, Routes, Route } from "react-router-dom";
 import CalendarPage from '../pages/CalendarPage';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { SignInPage } from '@toolpad/core/SignInPage';
+import LoginPage from '../pages/LoginPage'
 
 const drawerWidth = 240;
 
@@ -140,6 +142,7 @@ function ResponsiveDrawer(props) {
       >
         <Toolbar />
         <Routes>
+          <Route path='/login' element={<LoginPage/>} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="*" element={<h2>Welcome! Pick a section from the menu.</h2>} />
         </Routes>
