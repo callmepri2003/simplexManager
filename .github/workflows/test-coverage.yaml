@@ -61,3 +61,40 @@ jobs:
         coverage report --fail-under=80
         coverage xml
   
+  cypress-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+    
+    - name: Install Node.js dependencies
+      run: npm install
+    
+    - name: Run Cypress tests
+      uses: cypress-io/github-action@v6
+      with:
+        working-directory: ./frontend
+        browser: chrome
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload Cypress artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: cypress-artifacts
+        path: |
+          cypress/screenshots
+          cypress/videos
+        retention-days: 7
+  
