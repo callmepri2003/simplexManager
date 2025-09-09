@@ -22,6 +22,11 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { SignInPage } from '@toolpad/core/SignInPage';
 import LoginPage from '../pages/LoginPage'
+import AdminRoute from '../privateRoutes/AdminRoute';
+import UnauthenticatedRoute from '../privateRoutes/UnauthenticatedRoute';
+import AuthenticatedRoute from '../privateRoutes/AuthenticatedRoute';
+import UnauthorisedPage from '../pages/UnauthorisedPage';
+import LogoutPage from '../pages/LogoutPage';
 
 const drawerWidth = 240;
 
@@ -142,9 +147,31 @@ function ResponsiveDrawer(props) {
       >
         <Toolbar />
         <Routes>
-          <Route path='/login' element={<LoginPage/>} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="*" element={<h2>Welcome! Pick a section from the menu.</h2>} />
+          <Route path='/login' element={
+            <UnauthenticatedRoute>
+              <LoginPage/>
+            </UnauthenticatedRoute>
+            } />
+          <Route path="/calendar" element={
+            <AuthenticatedRoute>
+              <AdminRoute>
+                <CalendarPage/>
+              </AdminRoute>  
+            </AuthenticatedRoute>
+            } />
+          <Route path="/unauthorised" element={
+            <UnauthorisedPage/>
+            } />
+          <Route path="/logout" element={
+            <LogoutPage/>
+          } />
+          <Route path="*" element={
+            <AuthenticatedRoute>
+              <AdminRoute>
+                <h2>Welcome! Pick a section from the menu.</h2>
+              </AdminRoute>
+            </AuthenticatedRoute>
+            } />
         </Routes>
 
       </Box>

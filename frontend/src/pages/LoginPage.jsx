@@ -15,19 +15,22 @@ import {
 import {
   Visibility,
   VisibilityOff,
-  Email,
   Lock,
   Person
 } from '@mui/icons-material';
 
+import { login } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const navigate = useNavigate();
 
   const handleInputChange = (e) => {
     setFormData({
@@ -38,17 +41,13 @@ export default function LoginPage() {
   };
 
   const handleSubmit = async (e) => {
+    
     e.preventDefault();
     setError('');
 
     // Basic validation
-    if (!formData.email || !formData.password) {
+    if (!formData.username || !formData.password) {
       setError('Please fill in all fields');
-      return;
-    }
-
-    if (!formData.email.includes('@')) {
-      setError('Please enter a valid email address');
       return;
     }
 
@@ -56,16 +55,16 @@ export default function LoginPage() {
       setError('Password must be at least 6 characters');
       return;
     }
-
+    
     try {
-      // Replace this with your actual authentication logic
-      console.log(isLogin ? 'Logging in...' : 'Signing up...', formData);
+
+      const res = await login(formData.username, formData.password);
+
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Success - redirect or update app state
-      alert(`${isLogin ? 'Login' : 'Signup'} successful!`);
+      if (res.status === 200) {
+        localStorage.setItem("authTokens", JSON.stringify(res.data));
+        navigate('/')
+      }
       
     } catch (err) {
       setError('Authentication failed. Please try again.');
@@ -79,7 +78,7 @@ export default function LoginPage() {
   const switchMode = () => {
     setIsLogin(!isLogin);
     setError('');
-    setFormData({ email: '', password: '' });
+    setFormData({ username: '', password: '' });
   };
 
   return (
@@ -141,17 +140,16 @@ export default function LoginPage() {
               margin="normal"
               required
               fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
+              id="username"
+              label="Username"
+              name="username"
               autoFocus
-              value={formData.email}
+              value={formData.username}
               onChange={handleInputChange}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Email color="action" />
+                    <Person color="action" />
                   </InputAdornment>
                 ),
               }}

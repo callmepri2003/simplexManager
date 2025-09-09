@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: process.env.APIBASEURL,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
 API.interceptors.request.use((req) => {
@@ -13,8 +13,10 @@ API.interceptors.request.use((req) => {
 });
 
 // ----- Auth -----
-export const login = (username, password) =>
-  API.post("/api/token/", { username, password });
+export const login = (username, password) =>{
+  return API.post("/api/token/", { username, password });
+}
+  
 
 export const refreshToken = (refresh) =>
   API.post("/api/token/refresh/", { refresh });
