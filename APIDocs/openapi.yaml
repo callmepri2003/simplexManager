@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: DRF + React Auth API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /api/token/:
+    post:
+      summary: Obtain JWT tokens
+      description: Get access and refresh JWT tokens using username and password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  example: secret123
+      responses:
+        "200":
+          description: Tokens returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access:
+                    type: string
+                    description: Access token
+                  refresh:
+                    type: string
+                    description: Refresh token
+        "401":
+          description: Invalid credentials
+
+  /api/token/refresh/:
+    post:
+      summary: Refresh JWT access token
+      description: Use the refresh token to get a new access token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh
+              properties:
+                refresh:
+                  type: string
+                  description: Refresh token
+      responses:
+        "200":
+          description: New access token returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access:
+                    type: string
+                    description: New access token
+        "401":
+          description: Invalid refresh token
+
+  /dashboard:
+    get:
+      summary: Dashboard data
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Returns dashboard data (example)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Welcome to the dashboard!
+        "401":
+          description: Unauthorized
+
+  /admin:
+    get:
+      summary: Admin panel data
+      description: Requires `role admin` in JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Returns admin panel data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Welcome to the admin panel!
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (not enough role permissions)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
