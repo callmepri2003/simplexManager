@@ -21,12 +21,12 @@ import CalendarPage from '../pages/CalendarPage';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { SignInPage } from '@toolpad/core/SignInPage';
-import LoginPage from '../pages/LoginPage'
-import AdminRoute from '../privateRoutes/AdminRoute';
+import LoginPage from '../pages/LoginPage';
 import UnauthenticatedRoute from '../privateRoutes/UnauthenticatedRoute';
 import AuthenticatedRoute from '../privateRoutes/AuthenticatedRoute';
 import UnauthorisedPage from '../pages/UnauthorisedPage';
 import LogoutPage from '../pages/LogoutPage';
+import AdminRoute from '../privateRoutes/AdminRoute';
 
 const drawerWidth = 240;
 
@@ -52,7 +52,23 @@ function ResponsiveDrawer(props) {
 
   const drawer = (
     <div>
-      <Toolbar />
+      {/* Logo in drawer header - replaces <Toolbar /> */}
+      <Box sx={{ 
+        height: 64, // Same height as Toolbar
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 2 // padding horizontal
+      }}>
+        <img 
+          src="assets/logo.png" 
+          alt="Simplex Tuition Logo" 
+          style={{ 
+            height: 40, // Adjust as needed
+            width: 'auto'
+          }} 
+        />
+      </Box>
       <Divider />
       <List>
         <ListItem component={Link} to={"/calendar"} key={"Calendar"} disablePadding>
@@ -102,7 +118,7 @@ function ResponsiveDrawer(props) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            Responsive drawer
+            Simplex Tuition
           </Typography>
         </Toolbar>
       </AppBar>
