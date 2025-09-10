@@ -15,6 +15,9 @@ export default function LessonHistoryTimeline({ lessons }){
     };
     setLessons([newLesson, ...lessons]); // prepend newest
   };
+
+  console.log(lessons)
+  
   return <div className="col-md-5">
     <div className="p-4 border rounded-4 shadow-sm d-flex flex-column" style={{ maxHeight: "600px", overflowY: "auto" }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -25,56 +28,70 @@ export default function LessonHistoryTimeline({ lessons }){
       </div>
 
       <div className="d-flex flex-column gap-4">
-        {lessons.map((lesson) => (
-          <div key={lesson.id} className="d-flex">
+        {lessons.data?.lessons.map((lesson) => (
+          <div key={lesson.id} className="d-flex mb-4">
             {/* Timeline dot */}
             <div className="d-flex flex-column align-items-center me-3">
-              <div className="bg-primary rounded-circle" style={{ width: "12px", height: "12px" }}></div>
-              <div className="flex-grow-1 bg-secondary opacity-25" style={{ width: "2px" }}></div>
+              <div
+                className="bg-primary rounded-circle"
+                style={{ width: "12px", height: "12px" }}
+              ></div>
+              <div
+                className="flex-grow-1 bg-secondary opacity-25"
+                style={{ width: "2px" }}
+              ></div>
             </div>
 
             {/* Lesson Card */}
             <div className="p-3 border rounded-3 shadow-sm bg-light flex-grow-1">
-              {/* Date */}
+              {/* Date (fallback if no date field yet) */}
               <h6 className="fw-bold mb-2">
-                {new Date(lesson.date).toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
+                {lesson.date
+                  ? new Date(lesson.date).toLocaleDateString("en-GB", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "No date"}
               </h6>
 
-              {/* Resources */}
-              <div className="mb-2">
-                <small className="text-muted d-block">Resources</small>
-                <div className="d-flex flex-wrap gap-2 mt-1">
-                  {lesson.resources.map((res, idx) => (
+              {/* Resources (none in your payload yet) */}
+              {lesson.resources && lesson.resources.length > 0 && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Resources</small>
+                  <div className="d-flex flex-wrap gap-2 mt-1">
+                    {lesson.resources.map((res, idx) => (
                     <a
                       key={idx}
-                      href="#"
+                      href={res.file_url || "#"}
                       className="badge bg-primary bg-opacity-75 text-decoration-none"
                     >
-                      {res}
+                      {res.file_url ? res.file_url.split('/').pop().split('.')[0] : `Resource ${idx + 1}`}
                     </a>
                   ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Attendance */}
               <div className="mb-2">
                 <small className="text-muted d-block">Attendance</small>
                 <div className="d-flex flex-wrap gap-2 mt-1">
-                  {lesson.attendance.map((s, idx) => (
-                    <span
-                      key={idx}
-                      className={`badge rounded-pill ${
-                        s.present ? "bg-success" : "bg-secondary"
-                      }`}
-                    >
-                      {s.name} {s.paid ? "💰" : "❌"}
-                    </span>
-                  ))}
+                  {lesson.attendances.length > 0 ? (
+                    lesson.attendances.map((s, idx) => (
+                      <span
+                        key={idx}
+                        className={`badge rounded-pill ${
+                          s.present ? "bg-success" : "bg-secondary"
+                        }`}
+                      >
+                        {s.name} {s.paid ? "💰" : "❌"}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-muted small">No attendance recorded</span>
+                  )}
                 </div>
               </div>
 
@@ -85,6 +102,7 @@ export default function LessonHistoryTimeline({ lessons }){
             </div>
           </div>
         ))}
+
       </div>
     </div>
   </div>

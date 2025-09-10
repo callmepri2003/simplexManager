@@ -1,37 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { RetrieveGroup } from "../services/api";
+import { getLessonByGroup, getLessonRoll, RetrieveGroup } from "../services/api";
 import LessonHistoryTimeline from "../components/GroupsPage/LessonHistoryTimeline";
 
 export default function GroupsExplorePage() {
   const { id } = useParams();
   const [groupInformation, setGroupInformation] = useState(null);
+  const [lessons, setLessons] = useState({})
 
-  // Placeholder lesson history
-  const [lessons, setLessons] = useState([
-    {
-      id: 1,
-      date: "2025-09-03",
-      resources: ["Lesson1-Notes.pdf", "Practice-Sheet.pdf"],
-      attendance: [
-        { name: "Alice", present: true, paid: true },
-        { name: "Ben", present: false, paid: false },
-        { name: "Chloe", present: true, paid: true },
-      ],
-      notes: "Introduced fractions and practiced with real-life examples.",
-    },
-    {
-      id: 2,
-      date: "2025-08-27",
-      resources: ["Lesson2-Worksheet.pdf"],
-      attendance: [
-        { name: "Alice", present: true, paid: true },
-        { name: "Ben", present: true, paid: false },
-        { name: "Chloe", present: true, paid: true },
-      ],
-      notes: "Reviewed addition strategies. Ben asked for extra help.",
-    },
-  ]);
+  useEffect(()=>{
+    async function getLessonhistory(){
+      setLessons(await getLessonByGroup(id));
+    }
+    getLessonhistory();
+  },[])
 
   useEffect(() => {
     async function fetchGroup() {
