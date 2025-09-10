@@ -11,8 +11,10 @@ import Box from '@mui/material/Box';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import SchoolIcon from '@mui/icons-material/School';
+import { useNavigate } from 'react-router-dom';
 
 export default function GroupsCard(props) {
+  const navigate = useNavigate();
   const {
     id,
     lesson_length,
@@ -38,7 +40,7 @@ export default function GroupsCard(props) {
   return (
     <Card 
       sx={{ 
-        maxWidth: 345,
+        width: "100%",
         borderRadius: 2,
         boxShadow: 2,
         '&:hover': {
@@ -125,6 +127,7 @@ export default function GroupsCard(props) {
             textTransform: 'none',
             fontWeight: 500
           }}
+          onClick={() => navigate(`explore/${id}`)}
         >
           Explore
         </Button>

@@ -67,6 +67,7 @@ class Group(models.Model):
 
 class Lesson(models.Model):
   group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='lessons')
+  
 
 class Attendance(models.Model):
   lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')

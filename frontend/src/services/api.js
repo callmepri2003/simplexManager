@@ -87,7 +87,16 @@ export const refreshToken = (refresh) => API.post("/api/token/refresh/", { refre
 export const getDashboard = () => API.get("/dashboard");
 export const getAdminPanel = () => API.get("/admin");
 
-// ----- Objects -----
+// ----- Groups Services -----
 export const AllGroups = () => API.get("/api/groups/");
+
+export const CreateGroup = (data) => API.post("/api/groups/", data);
+
+export const RetrieveGroup = (id) => API.get(`/api/groups/${id}/`);
+
+export const UpdateGroup = (id, data) => API.put(`/api/groups/${id}/`, data);
+
+export const DeleteGroup = (id) => API.delete(`/api/groups/${id}/`);
+
 
 export default API;
