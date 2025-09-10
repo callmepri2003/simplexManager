@@ -21,11 +21,21 @@ class BasketAdmin(admin.ModelAdmin):
         return obj.items.count()
     get_total_items.short_description = "Total Items"
 
+
+class ResourceInline(admin.TabularInline):
+    model = Resource
+    extra = 1  # show one empty row for quick add
+
+@admin.register(Lesson)
+class LessonAdmin(admin.ModelAdmin):
+    list_display = ["group", "notes"]
+    inlines = [ResourceInline]
+
+
 admin.site.register(Basket, BasketAdmin)
 
 # Register other models normally
 admin.site.register(Group)
-admin.site.register(Lesson)
 admin.site.register(Attendance)
 admin.site.register(Parent)
 admin.site.register(Student)

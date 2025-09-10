@@ -29,6 +29,7 @@ import LogoutPage from '../pages/LogoutPage';
 import AdminRoute from '../privateRoutes/AdminAuthRoute';
 import GroupsPage from '../pages/GroupsPage';
 import ClassIcon from '@mui/icons-material/Class';
+import GroupsExplorePage from '../pages/GroupsExplorePage';
 
 const drawerWidth = 240;
 
@@ -127,9 +128,6 @@ function ResponsiveDrawer(props) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Simplex Tuition
-          </Typography>
         </Toolbar>
       </AppBar>
       <Box
@@ -185,13 +183,13 @@ function ResponsiveDrawer(props) {
             </AdminRoute>  
           </AuthenticatedRoute>
             } />
-          {/* <Route path="/calendar" element={
+          <Route path="/groups/explore/:id" element={
             <AuthenticatedRoute>
               <AdminRoute>
-                <CalendarPage/>
+                <GroupsExplorePage/>
               </AdminRoute>  
             </AuthenticatedRoute>
-            } /> */}
+            } />
           <Route path="/unauthorised" element={
             <UnauthorisedPage/>
             } />

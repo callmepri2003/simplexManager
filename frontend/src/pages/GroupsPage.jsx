@@ -34,7 +34,11 @@ export default function GroupsPage() {
     <>
       <div className="row">
         {groups.map((g) => (
-          <div className="groupsCardContainerIndividual col-lg-3 col-md-4 col-sm-12">
+          <div className="groupsCardContainerIndividual col-lg-3 col-md-6 col-sm-12"
+          style={{
+            display: "flex",
+            justifyContent:"center",
+          }}>
             <GroupsCard key={g.id} {...g} />
           </div>
         ))}

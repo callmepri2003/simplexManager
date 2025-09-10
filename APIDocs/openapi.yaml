@@ -160,8 +160,472 @@ paths:
         "204":
           description: Group deleted
 
+  /api/lessons/{lesson_id}/roll/:
+    get:
+      tags:
+        - Lesson Roll
+      summary: Get lesson roll data
+      description: Retrieve roll marking data for a specific lesson, including all students in the group and their current attendance status
+      parameters:
+        - name: lesson_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the lesson
+      responses:
+        '200':
+          description: Lesson roll data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonRollResponse'
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Lesson Roll
+      summary: Update lesson roll
+      description: Update attendance records for a lesson. Creates or updates attendance records for specified students.
+      parameters:
+        - name: lesson_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the lesson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonRollUpdate'
+      responses:
+        '200':
+          description: Roll updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonRollResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+
+    put:
+      tags:
+        - Lesson Roll
+      summary: Update lesson roll
+      description: Update attendance records for a lesson. Creates or updates attendance records for specified students.
+      parameters:
+        - name: lesson_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the lesson
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonRollUpdate'
+      responses:
+        '200':
+          description: Roll updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonRollResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+
+  /api/lessons/{lesson_id}/roll/reset/:
+    delete:
+      tags:
+        - Lesson Roll
+      summary: Reset lesson roll
+      description: Delete all attendance records for a specific lesson
+      parameters:
+        - name: lesson_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the lesson
+      responses:
+        '200':
+          description: Roll reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Reset 5 attendance records for lesson 123"
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+
+  /api/lessons/{lesson_id}/roll/summary/:
+    get:
+      tags:
+        - Lesson Roll
+      summary: Get lesson attendance summary
+      description: Retrieve attendance statistics and summary data for a specific lesson
+      parameters:
+        - name: lesson_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the lesson
+      responses:
+        '200':
+          description: Attendance summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceSummary'
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+        - bearerAuth: []
+  /api/lessons/group/{group_id}/:
+      get:
+        tags:
+          - Lesson Roll
+        summary: Get all lessons for a specific group
+        description: Retrieve all lessons that belong to a specific group, ordered by most recent first
+        parameters:
+          - name: group_id
+            in: path
+            required: true
+            schema:
+              type: integer
+            description: The ID of the group
+        responses:
+          '200':
+            description: Group lessons retrieved successfully
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    group_info:
+                      $ref: '#/components/schemas/GroupInfo'
+                    lessons:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/LessonRollResponse'
+                      description: List of lessons for this group
+                    total_lessons:
+                      type: integer
+                      description: Total number of lessons for this group
+                  required:
+                    - group_info
+                    - lessons
+                    - total_lessons
+          '404':
+            description: Group not found
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "Group with id 123 not found"
+                  required:
+                    - error
+          '401':
+            description: Unauthorized
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+        security:
+          - bearerAuth: []
+
 components:
   schemas:
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Student ID
+        display_name:
+          type: string
+          description: Student display name
+          example: "John Doe"
+      required:
+        - id
+        - display_name
+
+    GroupInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Group ID
+        course:
+          type: string
+          description: Course name
+          example: "12 Advanced"
+        tutor:
+          type: string
+          description: Tutor name
+          example: "Ms. Smith"
+        day_of_week:
+          type: string
+          description: Day of the week
+          example: "Monday"
+        time_of_day:
+          type: string
+          description: Time of day in 12-hour format
+          example: "02:30 PM"
+
+    Attendance:
+      type: object
+      properties:
+        student:
+          type: integer
+          description: Student ID
+        student_info:
+          $ref: '#/components/schemas/Student'
+        homework:
+          type: boolean
+          description: Whether homework was completed
+          default: false
+        paid:
+          type: boolean
+          description: Whether lesson fee was paid
+          default: false
+      required:
+        - student
+        - homework
+        - paid
+
+    LessonRollResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Lesson ID
+        notes:
+          type: string
+          nullable: true
+          description: Lesson notes
+          example: "Covered quadratic equations"
+        attendances:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attendance'
+          description: List of attendance records for this lesson
+        all_students:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+          description: All students in the lesson's group
+        group_info:
+          allOf:
+            - $ref: '#/components/schemas/GroupInfo'
+          nullable: true
+          description: Information about the lesson's group
+      required:
+        - id
+        - attendances
+        - all_students
+
+    AttendanceUpdate:
+      type: object
+      properties:
+        student:
+          type: integer
+          description: Student ID
+        homework:
+          type: boolean
+          description: Whether homework was completed
+          default: false
+        paid:
+          type: boolean
+          description: Whether lesson fee was paid
+          default: false
+      required:
+        - student
+
+    LessonRollUpdate:
+      type: object
+      properties:
+        notes:
+          type: string
+          maxLength: 100
+          description: Optional lesson notes
+          example: "Covered quadratic equations and homework review"
+        attendances:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceUpdate'
+          description: List of attendance records to update
+          minItems: 0
+      required:
+        - attendances
+      example:
+        notes: "Covered quadratic equations"
+        attendances:
+          - student: 1
+            homework: true
+            paid: true
+          - student: 2
+            homework: false
+            paid: true
+
+    AttendanceSummary:
+      type: object
+      properties:
+        lesson_id:
+          type: integer
+          description: Lesson ID
+        total_students_in_group:
+          type: integer
+          description: Total number of students in the lesson's group
+        present_count:
+          type: integer
+          description: Number of students marked as present
+        absent_count:
+          type: integer
+          description: Number of students marked as absent
+        homework_completed:
+          type: integer
+          description: Number of students who completed homework
+        homework_not_completed:
+          type: integer
+          description: Number of students who did not complete homework
+        paid_count:
+          type: integer
+          description: Number of students who have paid
+        unpaid_count:
+          type: integer
+          description: Number of students who have not paid
+        attendance_rate:
+          type: number
+          format: float
+          description: Attendance rate as a percentage
+          example: 85.5
+      required:
+        - lesson_id
+        - total_students_in_group
+        - present_count
+        - absent_count
+        - homework_completed
+        - homework_not_completed
+        - paid_count
+        - unpaid_count
+        - attendance_rate
+
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Not found."
+      required:
+        - detail
+
+    ValidationError:
+      type: object
+      properties:
+        attendances:
+          type: array
+          items:
+            type: string
+          description: Validation errors for attendance data
+        notes:
+          type: array
+          items:
+            type: string
+          description: Validation errors for notes field
+        non_field_errors:
+          type: array
+          items:
+            type: string
+          description: General validation errors
+      example:
+        attendances:
+          - "Invalid student IDs: [999]"
+        notes:
+          - "Ensure this field has no more than 100 characters."
     Group:
       type: object
       properties:

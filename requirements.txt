@@ -4,8 +4,10 @@ blessed==1.21.0
 certifi==2025.6.15
 charset-normalizer==3.4.2
 click==8.2.1
+cloudinary==1.44.1
 coverage==7.9.2
 Django==5.2.4
+django-cloudinary-storage==0.3.0
 django-cors-headers==4.8.0
 django-picklefield==3.3
 django-q2==1.8.0
@@ -14,10 +16,14 @@ djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.1
 gunicorn==23.0.0
 idna==3.10
+iniconfig==2.1.0
 packaging==25.0
+pluggy==1.6.0
 prompt_toolkit==3.0.51
 psycopg2-binary==2.9.10
+Pygments==2.19.2
 PyJWT==2.10.1
+pytest==8.4.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 redis==3.5.3
