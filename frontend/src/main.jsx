@@ -5,6 +5,9 @@ import { BrowserRouter } from "react-router-dom";
 import ResponsiveDrawer from './components/ResponsiveDrawer.jsx';
 import { AuthProvider } from './components/AuthContext.jsx';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'; // optional, only if you use JS components
+
 
 const theme = createTheme({
   palette: {

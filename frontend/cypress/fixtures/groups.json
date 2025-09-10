@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "lesson_length": 2,
+    "associated_product": "Math Pack",
+    "tutor": "Alice",
+    "course": "11 Advanced",
+    "day_of_week": 5,
+    "time_of_day": "10:00:00",
+    "weekly_time": "Saturday 10:00 AM",
+    "image_base64": null
+  },
+  {
+    "id": 2,
+    "lesson_length": 1,
+    "associated_product": "Science Pack",
+    "tutor": "Bob",
+    "course": "12 Ext 1",
+    "day_of_week": 6,
+    "time_of_day": "14:00:00",
+    "weekly_time": "Sunday 2:00 PM",
+    "image_base64": null
+  }
+]

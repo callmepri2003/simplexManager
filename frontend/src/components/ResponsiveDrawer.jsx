@@ -28,6 +28,7 @@ import UnauthorisedPage from '../pages/UnauthorisedPage';
 import LogoutPage from '../pages/LogoutPage';
 import AdminRoute from '../privateRoutes/AdminAuthRoute';
 import GroupsPage from '../pages/GroupsPage';
+import ClassIcon from '@mui/icons-material/Class';
 
 const drawerWidth = 240;
 
@@ -75,7 +76,7 @@ function ResponsiveDrawer(props) {
         <ListItem component={Link} to={"/groups"} key={"Groups"} disablePadding>
             <ListItemButton>
               <ListItemIcon>
-                <CalendarMonthIcon/>
+                <ClassIcon/>
               </ListItemIcon>
               <ListItemText primary={"Groups"} />
             </ListItemButton>
