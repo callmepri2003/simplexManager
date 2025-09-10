@@ -1,4 +1,12 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from tutoring.models import Group
+from rest_framework import serializers
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ["id", "lesson_length", "associated_product", "image_base64"]
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod

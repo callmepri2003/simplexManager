@@ -3,11 +3,31 @@ from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd
 from django.db.models.signals import post_save
+import base64
 
 
 class Group(models.Model):
-  lesson_length = models.IntegerField(default=1)
-  associated_product = models.ForeignKey(StripeProd, on_delete=models.CASCADE, related_name="subscribed_groups", null=True)
+    lesson_length = models.IntegerField(default=1)
+    associated_product = models.ForeignKey(
+        StripeProd,
+        on_delete=models.CASCADE,
+        related_name="subscribed_groups",
+        null=True
+    )
+    # real storage
+    image_base64 = models.TextField(null=True, blank=True)
+
+    # transient upload field (not stored in DB)
+    image_upload = models.FileField(upload_to="tmp/", null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.image_upload:
+            # read and convert to base64
+            self.image_base64 = base64.b64encode(self.image_upload.read()).decode("utf-8")
+            # clear the temp file field so it's not persisted
+            self.image_upload.delete(save=False)
+            self.image_upload = None
+        super().save(*args, **kwargs)
 
 class Lesson(models.Model):
   group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='lessons')
