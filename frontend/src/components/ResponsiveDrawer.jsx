@@ -26,7 +26,9 @@ import UnauthenticatedRoute from '../privateRoutes/UnauthenticatedRoute';
 import AuthenticatedRoute from '../privateRoutes/AuthenticatedRoute';
 import UnauthorisedPage from '../pages/UnauthorisedPage';
 import LogoutPage from '../pages/LogoutPage';
-import AdminRoute from '../privateRoutes/AdminRoute';
+import AdminRoute from '../privateRoutes/AdminAuthRoute';
+import GroupsPage from '../pages/GroupsPage';
+import ClassIcon from '@mui/icons-material/Class';
 
 const drawerWidth = 240;
 
@@ -71,6 +73,14 @@ function ResponsiveDrawer(props) {
       </Box>
       <Divider />
       <List>
+        <ListItem component={Link} to={"/groups"} key={"Groups"} disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+                <ClassIcon/>
+              </ListItemIcon>
+              <ListItemText primary={"Groups"} />
+            </ListItemButton>
+          </ListItem>
         <ListItem component={Link} to={"/calendar"} key={"Calendar"} disablePadding>
             <ListItemButton>
               <ListItemIcon>
@@ -168,13 +178,20 @@ function ResponsiveDrawer(props) {
               <LoginPage/>
             </UnauthenticatedRoute>
             } />
-          <Route path="/calendar" element={
+          <Route path="/groups" element={
+          <AuthenticatedRoute>
+            <AdminRoute>
+              <GroupsPage/>
+            </AdminRoute>  
+          </AuthenticatedRoute>
+            } />
+          {/* <Route path="/calendar" element={
             <AuthenticatedRoute>
               <AdminRoute>
                 <CalendarPage/>
               </AdminRoute>  
             </AuthenticatedRoute>
-            } />
+            } /> */}
           <Route path="/unauthorised" element={
             <UnauthorisedPage/>
             } />

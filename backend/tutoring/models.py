@@ -3,11 +3,67 @@ from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd
 from django.db.models.signals import post_save
+import base64
 
 
 class Group(models.Model):
-  lesson_length = models.IntegerField(default=1)
-  associated_product = models.ForeignKey(StripeProd, on_delete=models.CASCADE, related_name="subscribed_groups", null=True)
+    class CourseChoices(models.TextChoices):
+        JUNIOR_MATHS = "Junior Maths", "Junior Maths"
+        YEAR11_ADV = "11 Advanced", "11 Advanced"
+        YEAR11_EXT1 = "11 Ext 1", "11 Ext 1"
+        YEAR12_ADV = "12 Advanced", "12 Advanced"
+        YEAR12_EXT1 = "12 Ext 1", "12 Ext 1"
+        YEAR12_EXT2 = "12 Ext 2", "12 Ext 2"
+
+    class Weekday(models.IntegerChoices):
+        MONDAY = 0, "Monday"
+        TUESDAY = 1, "Tuesday"
+        WEDNESDAY = 2, "Wednesday"
+        THURSDAY = 3, "Thursday"
+        FRIDAY = 4, "Friday"
+        SATURDAY = 5, "Saturday"
+        SUNDAY = 6, "Sunday"
+
+    lesson_length = models.IntegerField(default=1)  # In hours
+    associated_product = models.ForeignKey(
+        StripeProd,
+        on_delete=models.CASCADE,
+        related_name="subscribed_groups",
+        null=True
+    )
+
+    tutor = models.CharField(max_length=50)
+    course = models.CharField(
+        max_length=20,
+        choices=CourseChoices.choices,
+        null=True
+    )
+    day_of_week = models.IntegerField(
+        choices=Weekday.choices,
+        null=True
+    )
+    time_of_day = models.TimeField(null=True)
+
+    # real storage
+    image_base64 = models.TextField(null=True, blank=True)
+
+    # transient upload field (not stored in DB)
+    image_upload = models.FileField(upload_to="tmp/", null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.image_upload:
+            # read and convert to base64
+            self.image_base64 = base64.b64encode(self.image_upload.read()).decode("utf-8")
+            # clear the temp file field so it's not persisted
+            self.image_upload.delete(save=False)
+            self.image_upload = None
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        try:
+          return f"{self.course} with {self.tutor} on {self.get_day_of_week_display()} at {self.time_of_day.strftime('%I:%M %p')}"
+        except:
+           return ""
 
 class Lesson(models.Model):
   group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='lessons')
