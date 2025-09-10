@@ -73,49 +73,105 @@ paths:
                     description: New access token
         "401":
           description: Invalid refresh token
-
-  /dashboard:
+  /api/groups/:
     get:
-      summary: Dashboard data
+      summary: List groups
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Returns dashboard data (example)
+          description: A list of groups
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Welcome to the dashboard!
-        "401":
-          description: Unauthorized
-
-  /admin:
-    get:
-      summary: Admin panel data
-      description: Requires `role admin` in JWT.
+                type: array
+                items:
+                  $ref: "#/components/schemas/Group"
+    post:
+      summary: Create a group
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Group"
       responses:
-        "200":
-          description: Returns admin panel data
+        "201":
+          description: Group created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Welcome to the admin panel!
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden (not enough role permissions)
+                $ref: "#/components/schemas/Group"
+
+  /api/groups/{id}/:
+    get:
+      summary: Retrieve a group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: A group object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+    put:
+      summary: Update a group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Group"
+      responses:
+        "200":
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+    delete:
+      summary: Delete a group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Group deleted
 
 components:
+  schemas:
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Admins
+
   securitySchemes:
     bearerAuth:
       type: http

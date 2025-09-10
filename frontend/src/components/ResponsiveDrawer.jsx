@@ -26,7 +26,7 @@ import UnauthenticatedRoute from '../privateRoutes/UnauthenticatedRoute';
 import AuthenticatedRoute from '../privateRoutes/AuthenticatedRoute';
 import UnauthorisedPage from '../pages/UnauthorisedPage';
 import LogoutPage from '../pages/LogoutPage';
-import AdminRoute from '../privateRoutes/AdminRoute';
+import AdminRoute from '../privateRoutes/AdminAuthRoute';
 import GroupsPage from '../pages/GroupsPage';
 
 const drawerWidth = 240;

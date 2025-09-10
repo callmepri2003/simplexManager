@@ -26,3 +26,8 @@ export const getDashboard = () => API.get("/dashboard");
 export const getAdminPanel = () => API.get("/admin");
 
 export default API;
+
+// ----- Objects -----
+export const AllGroups = () => {
+  return API.get("/api/groups/");
+}
