@@ -3,6 +3,7 @@ from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd
 from django.db.models.signals import post_save
+from cloudinary.models import CloudinaryField
 import base64
 
 
@@ -66,12 +67,25 @@ class Group(models.Model):
            return ""
 
 class Lesson(models.Model):
-  group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='lessons')
-  
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons", null=True)
+    notes = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return f"Lesson {self.id} - {self.notes or 'No notes'}"
+
+
+class Resource(models.Model):
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="resources")
+    file = CloudinaryField("Resource", resource_type="auto")
+
+    def __str__(self):
+        return self.file.public_id if self.file else "Resource"
 
 class Attendance(models.Model):
   lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
-  invoiced = models.BooleanField(default=False)
+  student = models.ForeignKey("Student", on_delete=models.DO_NOTHING, related_name='lessons_attended', null=True)
+  homework = models.BooleanField(default=False)
+  paid = models.BooleanField(default=False)
 
 class Basket(models.Model):
   None
