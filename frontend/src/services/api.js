@@ -85,7 +85,9 @@ export const login = (username, password) => API.post("/api/token/", { username,
 export const refreshToken = (refresh) => API.post("/api/token/refresh/", { refresh });
 
 // ----- Groups Services -----
-export function useAllGroups(){
+
+// GET *
+export function useGetAllGroups(){
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -98,5 +100,21 @@ export function useAllGroups(){
   }, [])
   return [data, loading, error]
 }
+
+// GET :id
+export function useGetGroup(id){
+  const [groupInformation, setGroupInformation] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get(`/api/groups/${id}/`)
+      .then(res => setGroupInformation(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [id])
+  return [groupInformation, loading, error]
+}
+
 
 export default API;

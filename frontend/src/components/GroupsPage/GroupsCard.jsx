@@ -37,7 +37,6 @@ export default function GroupsCard(props) {
   const getTutorInitials = (name) => {
     return name ? name.charAt(0).toUpperCase() : 'T';
   };
-  console.log(props)
   return (
     <Card 
       sx={{ 

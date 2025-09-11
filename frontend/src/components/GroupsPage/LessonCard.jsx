@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { updateLessonRoll, updateLessonRollPut } from "../../services/api";
 
 export default function LessonCard({ lesson }) {
 

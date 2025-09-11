@@ -29,7 +29,7 @@ import LogoutPage from '../pages/LogoutPage';
 import AdminRoute from '../privateRoutes/AdminAuthRoute';
 import GroupsPage from '../pages/GroupsPage';
 import ClassIcon from '@mui/icons-material/Class';
-// import GroupsExplorePage from '../pages/GroupsExplorePage';
+import GroupsExplorePage from '../pages/GroupsExplorePage';
 
 const drawerWidth = 240;
 
@@ -183,13 +183,13 @@ function ResponsiveDrawer(props) {
             </AdminRoute>  
           </AuthenticatedRoute>
             } />
-          {/* <Route path="/groups/explore/:id" element={
+          <Route path="/groups/explore/:id" element={
             <AuthenticatedRoute>
               <AdminRoute>
                 <GroupsExplorePage/>
               </AdminRoute>  
             </AuthenticatedRoute>
-            } /> */}
+            } />
           <Route path="/unauthorised" element={
             <UnauthorisedPage/>
             } />
