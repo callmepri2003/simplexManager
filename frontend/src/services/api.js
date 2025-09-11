@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useEffect, useState } from "react";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -84,6 +85,18 @@ export const login = (username, password) => API.post("/api/token/", { username,
 export const refreshToken = (refresh) => API.post("/api/token/refresh/", { refresh });
 
 // ----- Groups Services -----
-export const AllGroups = () => API.get("/api/groups/");
+export function useAllGroups(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get('/api/groups/')
+      .then(res => setData(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [])
+  return [data, loading, error]
+}
 
 export default API;

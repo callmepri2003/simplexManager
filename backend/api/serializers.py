@@ -1,6 +1,7 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
+from stripeInt.models import StripeProd
 from tutoring.models import Group
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -20,7 +21,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return data
 
+class StripeProdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StripeProd
+        fields = '__all__'
+
 class GroupSerializer(serializers.ModelSerializer):
+    # attendances = AttendanceSerializer(many=True)
+    associated_product = StripeProdSerializer()
     class Meta:
         model = Group
         fields = '__all__'
