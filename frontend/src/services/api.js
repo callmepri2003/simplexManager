@@ -83,38 +83,7 @@ API.interceptors.response.use(
 export const login = (username, password) => API.post("/api/token/", { username, password });
 export const refreshToken = (refresh) => API.post("/api/token/refresh/", { refresh });
 
-// ----- Protected Endpoints -----
-export const getDashboard = () => API.get("/dashboard");
-export const getAdminPanel = () => API.get("/admin");
-
 // ----- Groups Services -----
 export const AllGroups = () => API.get("/api/groups/");
-
-export const CreateGroup = (data) => API.post("/api/groups/", data);
-
-export const RetrieveGroup = (id) => API.get(`/api/groups/${id}/`);
-
-export const UpdateGroup = (id, data) => API.put(`/api/groups/${id}/`, data);
-
-export const DeleteGroup = (id) => API.delete(`/api/groups/${id}/`);
-
-// ----- Lesson Roll Services -----
-
-// Get lesson roll data
-export const getLessonRoll = (lessonId) => API.get(`/api/lessons/${lessonId}/roll/`);
-
-// Update lesson roll (POST)
-export const updateLessonRoll = (lessonId, data) => API.post(`/api/lessons/${lessonId}/roll/update/`, data);
-
-// Update lesson roll (PUT)
-export const updateLessonRollPut = (lessonId, data) => API.put(`/api/lessons/${lessonId}/roll/update/`, data);
-
-// Reset lesson roll
-export const resetLessonRoll = (lessonId) => API.delete(`/api/lessons/${lessonId}/roll/reset/`);
-
-// Get lesson attendance summary
-export const getLessonRollSummary = (lessonId) => API.get(`/api/lessons/${lessonId}/roll/summary/`);
-
-export const getLessonByGroup = (groupId) => API.get(`/api/lessons/group/${groupId}/`);
 
 export default API;

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getLessonByGroup, getLessonRoll, RetrieveGroup } from "../services/api";
 import LessonHistoryTimeline from "../components/GroupsPage/LessonHistoryTimeline";
 
 export default function GroupsExplorePage() {

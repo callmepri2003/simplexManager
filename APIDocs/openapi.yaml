@@ -87,23 +87,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Group"
-    post:
-      summary: Create a group
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Group"
-      responses:
-        "201":
-          description: Group created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Group"
 
   /api/groups/{id}/:
     get:
@@ -116,13 +99,6 @@ paths:
           required: true
           schema:
             type: integer
-      responses:
-        "200":
-          description: A group object
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Group"
     put:
       summary: Update a group
       security:
