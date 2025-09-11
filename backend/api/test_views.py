@@ -7,7 +7,7 @@ from rest_framework import status
 from datetime import time
 from unittest.mock import patch, Mock
 
-from tutoring.models import Student, Group, Lesson, Attendance, Parent
+from tutoring.models import TutoringStudent, Group, Lesson, Attendance, Parent
 from stripeInt.models import StripeProd
 from .views import LessonRollViewSet, MyTokenObtainPairView, GroupViewSet
 
@@ -23,8 +23,8 @@ class LessonRollViewSetTest(APITestCase):
         
         # Create test data
         self.parent = Parent.objects.create(name='Test Parent', stripeId='stripe_123')
-        self.student1 = Student.objects.create(parent=self.parent)
-        self.student2 = Student.objects.create(parent=self.parent)
+        self.student1 = TutoringStudent.objects.create(parent=self.parent)
+        self.student2 = TutoringStudent.objects.create(parent=self.parent)
         
         self.group = Group.objects.create(
             tutor='Test Tutor',
@@ -32,7 +32,7 @@ class LessonRollViewSetTest(APITestCase):
             day_of_week=Group.Weekday.MONDAY,
             time_of_day=time(10, 0)
         )
-        self.group.students.add(self.student1, self.student2)
+        self.group.tutoringStudents.add(self.student1, self.student2)
         
         self.lesson = Lesson.objects.create(
             group=self.group,
@@ -41,7 +41,7 @@ class LessonRollViewSetTest(APITestCase):
         
         self.attendance = Attendance.objects.create(
             lesson=self.lesson,
-            student=self.student1,
+            tutoringStudent=self.student1,
             homework=True,
             paid=False
         )

@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 from django.db import transaction
-from tutoring.models import Lesson, Attendance, Resource, Student, Group
+from tutoring.models import Lesson, Attendance, Resource, TutoringStudent, Group
 
 class StudentSerializer(serializers.ModelSerializer):
     """Basic student serializer for displaying student info"""
@@ -10,7 +10,7 @@ class StudentSerializer(serializers.ModelSerializer):
     display_name = serializers.SerializerMethodField()
     
     class Meta:
-        model = Student
+        model = TutoringStudent
         fields = ['id', 'display_name']
     
     def get_display_name(self, obj):
@@ -21,11 +21,11 @@ class StudentSerializer(serializers.ModelSerializer):
 
 class AttendanceSerializer(serializers.ModelSerializer):
     """Serializer for attendance records"""
-    student_info = StudentSerializer(source='student', read_only=True)
+    student_info = StudentSerializer(source='tutoringStudent', read_only=True)
     
     class Meta:
         model = Attendance
-        fields = ['student', 'student_info', 'homework', 'paid']
+        fields = ['tutoringStudent', 'student_info', 'homework', 'paid']
 
 class ResourceSerializer(serializers.ModelSerializer):
     """Serializer for lesson resources"""
@@ -54,7 +54,7 @@ class LessonRollReadSerializer(serializers.ModelSerializer):
     def get_all_students(self, obj):
         """Get all students in the lesson's group"""
         if obj.group:
-            return StudentSerializer(obj.group.students.all(), many=True).data
+            return StudentSerializer(obj.group.tutoringStudents.all(), many=True).data
         return []
 
     def get_group_info(self, obj):
@@ -72,7 +72,7 @@ class LessonRollReadSerializer(serializers.ModelSerializer):
 
 class AttendanceUpdateSerializer(serializers.Serializer):
     """Serializer for updating attendance data"""
-    student = serializers.IntegerField()
+    tutoringStudent = serializers.IntegerField()
     homework = serializers.BooleanField(default=False)
     paid = serializers.BooleanField(default=False)
 
@@ -83,11 +83,11 @@ class LessonRollUpdateSerializer(serializers.Serializer):
     
     def validate_attendances(self, value):
         """Validate that all students exist"""
-        student_ids = [attendance['student'] for attendance in value]
-        existing_students = Student.objects.filter(id__in=student_ids)
+        tutoringStudent_ids = [attendance['tutoringStudent'] for attendance in value]
+        existing_students = TutoringStudent.objects.filter(id__in=tutoringStudent_ids)
         existing_student_ids = set(existing_students.values_list('id', flat=True))
         
-        invalid_student_ids = set(student_ids) - existing_student_ids
+        invalid_student_ids = set(tutoringStudent_ids) - existing_student_ids
         if invalid_student_ids:
             raise serializers.ValidationError(
                 f"Invalid student IDs: {list(invalid_student_ids)}"
@@ -100,8 +100,8 @@ class LessonRollUpdateSerializer(serializers.Serializer):
         if not lesson or not lesson.group:
             raise serializers.ValidationError("Lesson must have an associated group")
         
-        student_ids = [attendance['student'] for attendance in data['attendances']]
-        group_student_ids = set(lesson.group.students.values_list('id', flat=True))
+        student_ids = [attendance['tutoringStudent'] for attendance in data['attendances']]
+        group_student_ids = set(lesson.group.tutoringStudents.values_list('id', flat=True))
         
         invalid_students = set(student_ids) - group_student_ids
         if invalid_students:
@@ -114,6 +114,7 @@ class LessonRollUpdateSerializer(serializers.Serializer):
 class GroupSerializer(serializers.ModelSerializer):
     weekly_time = serializers.SerializerMethodField()
     associated_product = serializers.SerializerMethodField()  # override to show str()
+    students = StudentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Group
@@ -128,6 +129,7 @@ class GroupSerializer(serializers.ModelSerializer):
             "weekly_time",
             "image_base64",
             "image_upload",  # transient field for upload
+            "students"
         ]
         extra_kwargs = {
             "image_upload": {"write_only": True, "required": False},

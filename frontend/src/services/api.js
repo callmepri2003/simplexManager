@@ -104,10 +104,10 @@ export const DeleteGroup = (id) => API.delete(`/api/groups/${id}/`);
 export const getLessonRoll = (lessonId) => API.get(`/api/lessons/${lessonId}/roll/`);
 
 // Update lesson roll (POST)
-export const updateLessonRoll = (lessonId, data) => API.post(`/api/lessons/${lessonId}/roll/`, data);
+export const updateLessonRoll = (lessonId, data) => API.post(`/api/lessons/${lessonId}/roll/update/`, data);
 
 // Update lesson roll (PUT)
-export const updateLessonRollPut = (lessonId, data) => API.put(`/api/lessons/${lessonId}/roll/`, data);
+export const updateLessonRollPut = (lessonId, data) => API.put(`/api/lessons/${lessonId}/roll/update/`, data);
 
 // Reset lesson roll
 export const resetLessonRoll = (lessonId) => API.delete(`/api/lessons/${lessonId}/roll/reset/`);

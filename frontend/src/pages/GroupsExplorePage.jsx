@@ -29,7 +29,7 @@ export default function GroupsExplorePage() {
   }, [id]);
 
   if (!groupInformation) return <div className="text-center p-5">Loading...</div>;
-
+  
   return (
     <div className="container-fluid p-0">
       {/* Hero Section */}

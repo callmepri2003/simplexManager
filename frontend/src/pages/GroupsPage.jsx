@@ -29,7 +29,7 @@ export default function GroupsPage() {
 
   if (loading) return <p>Loading groups...</p>;
   if (error) return <p>Error: {JSON.stringify(error)}</p>;
-
+  
   return (
     <>
       <div className="row">

@@ -1,7 +1,7 @@
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import LessonRollReadSerializer, LessonRollUpdateSerializer, MyTokenObtainPairSerializer
 from rest_framework import viewsets
-from tutoring.models import Group, Lesson
+from tutoring.models import Group, Lesson, TutoringStudent, Attendance
 from .serializers import GroupSerializer
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -32,7 +32,7 @@ class LessonRollViewSet(viewsets.ModelViewSet):
         serializer = LessonRollReadSerializer(lesson)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post', 'put'], url_path='roll')
+    @action(detail=True, methods=['post', 'put'], url_path='roll/update')
     def update_roll(self, request, pk=None):
         """
         Update roll data for a specific lesson
@@ -43,9 +43,13 @@ class LessonRollViewSet(viewsets.ModelViewSet):
             data=request.data, 
             context={'lesson': lesson}
         )
+
+        print('***here1***')
         
         if serializer.is_valid():
+            
             with transaction.atomic():
+                
                 # Update lesson notes if provided
                 if 'notes' in serializer.validated_data:
                     lesson.notes = serializer.validated_data['notes']
@@ -55,13 +59,13 @@ class LessonRollViewSet(viewsets.ModelViewSet):
                 attendance_data = serializer.validated_data['attendances']
                 
                 for attendance_item in attendance_data:
-                    student_id = attendance_item['student']
-                    student = Student.objects.get(id=student_id)
+                    student_id = attendance_item['tutoringStudent']
+                    tutoringStudent = TutoringStudent.objects.get(id=student_id)
                     
                     # Update or create attendance record
                     attendance, created = Attendance.objects.update_or_create(
                         lesson=lesson,
-                        student=student,
+                        tutoringStudent=tutoringStudent,
                         defaults={
                             'homework': attendance_item['homework'],
                             'paid': attendance_item['paid']
@@ -74,7 +78,9 @@ class LessonRollViewSet(viewsets.ModelViewSet):
                     response_serializer.data, 
                     status=status.HTTP_200_OK
                 )
-        
+        print("=== SERIALIZER VALIDATION FAILED ===")
+        print(f"Raw request data: {request.data}")
+        print(f"Serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['delete'], url_path='roll/reset')
@@ -100,7 +106,7 @@ class LessonRollViewSet(viewsets.ModelViewSet):
         lesson = self.get_object()
         attendances = lesson.attendances.all()
         
-        total_students = lesson.group.students.count() if lesson.group else 0
+        total_students = lesson.group.tutoringStudents.count() if lesson.group else 0
         present_count = attendances.count()
         homework_completed = attendances.filter(homework=True).count()
         paid_count = attendances.filter(paid=True).count()

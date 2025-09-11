@@ -11,4 +11,10 @@ export default defineConfig({
     baseUrl: process.env.SELFBASEURL,
   },
 
+  component: {
+    devServer: {
+      framework: "react",
+      bundler: "vite",
+    },
+  },
 });

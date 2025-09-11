@@ -194,7 +194,7 @@ paths:
                 $ref: '#/components/schemas/Error'
       security:
         - bearerAuth: []
-
+  /api/lessons/{lesson_id}/roll/update:
     post:
       tags:
         - Lesson Roll

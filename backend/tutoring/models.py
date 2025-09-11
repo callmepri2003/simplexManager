@@ -83,7 +83,7 @@ class Resource(models.Model):
 
 class Attendance(models.Model):
   lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
-  student = models.ForeignKey("Student", on_delete=models.DO_NOTHING, related_name='lessons_attended', null=True)
+  tutoringStudent = models.ForeignKey("TutoringStudent", on_delete=models.DO_NOTHING, related_name='lessons_attended', null=True)
   homework = models.BooleanField(default=False)
   paid = models.BooleanField(default=False)
 
@@ -124,6 +124,6 @@ def create_parent_basket(sender, instance, created, **kwargs):
         instance.basket = basket
         instance.save()
 
-class Student(models.Model):
-  group = models.ManyToManyField(Group, related_name='students')
+class TutoringStudent(models.Model):
+  group = models.ManyToManyField(Group, related_name='tutoringStudents')
   parent = models.ForeignKey(Parent, on_delete=models.CASCADE, related_name='children')

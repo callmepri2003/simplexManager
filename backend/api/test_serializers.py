@@ -5,7 +5,7 @@ from datetime import time, datetime
 from unittest.mock import Mock, patch
 from rest_framework.exceptions import ValidationError
 
-from tutoring.models import Student, Group, Lesson, Attendance, Resource, Parent
+from tutoring.models import TutoringStudent, Group, Lesson, Attendance, Resource, Parent
 from stripeInt.models import StripeProd
 from .serializers import (
     StudentSerializer,
@@ -27,18 +27,18 @@ class StudentSerializerTest(TestCase):
             last_name='Doe'
         )
         self.parent = Parent.objects.create(name='Test Parent', stripeId='stripe_123')
-        self.student = Student.objects.create(parent=self.parent)
+        self.tutoringStudent = TutoringStudent.objects.create(parent=self.parent)
 
     def test_serialize_student_without_user(self):
-        serializer = StudentSerializer(self.student)
+        serializer = StudentSerializer(self.tutoringStudent)
         data = serializer.data
         
-        assert data['id'] == self.student.id
-        assert data['display_name'] == f'Student {self.student.id}'
+        assert data['id'] == self.tutoringStudent.id
+        assert data['display_name'] == f'Student {self.tutoringStudent.id}'
 
     def test_serialize_student_with_user(self):
-        self.student.user = self.user
-        serializer = StudentSerializer(self.student)
+        self.tutoringStudent.user = self.user
+        serializer = StudentSerializer(self.tutoringStudent)
         data = serializer.data
         
         assert data['display_name'] == 'John Doe'
@@ -47,12 +47,12 @@ class StudentSerializerTest(TestCase):
 class AttendanceSerializerTest(TestCase):
     def setUp(self):
         self.parent = Parent.objects.create(name='Test Parent', stripeId='stripe_123')
-        self.student = Student.objects.create(parent=self.parent)
+        self.tutoringStudent = TutoringStudent.objects.create(parent=self.parent)
         self.group = Group.objects.create(tutor='Test Tutor')
         self.lesson = Lesson.objects.create(group=self.group)
         self.attendance = Attendance.objects.create(
             lesson=self.lesson,
-            student=self.student,
+            tutoringStudent=self.tutoringStudent,
             homework=True,
             paid=False
         )
@@ -61,11 +61,11 @@ class AttendanceSerializerTest(TestCase):
         serializer = AttendanceSerializer(self.attendance)
         data = serializer.data
         
-        assert data['student'] == self.student.id
+        assert data['tutoringStudent'] == self.tutoringStudent.id
         assert data['homework'] is True
         assert data['paid'] is False
         assert 'student_info' in data
-        assert data['student_info']['id'] == self.student.id
+        assert data['student_info']['id'] == self.tutoringStudent.id
 
 
 class ResourceSerializerTest(TestCase):
@@ -98,21 +98,21 @@ class ResourceSerializerTest(TestCase):
 class LessonRollReadSerializerTest(TestCase):
     def setUp(self):
         self.parent = Parent.objects.create(name='Test Parent', stripeId='stripe_123')
-        self.student = Student.objects.create(parent=self.parent)
+        self.tutoringStudent = TutoringStudent.objects.create(parent=self.parent)
         self.group = Group.objects.create(
             tutor='Test Tutor',
             course=Group.CourseChoices.JUNIOR_MATHS,
             day_of_week=Group.Weekday.MONDAY,
             time_of_day=time(10, 0)
         )
-        self.group.students.add(self.student)
+        self.group.tutoringStudents.add(self.tutoringStudent)
         self.lesson = Lesson.objects.create(
             group=self.group,
             notes='Test lesson notes'
         )
         self.attendance = Attendance.objects.create(
             lesson=self.lesson,
-            student=self.student,
+            tutoringStudent=self.tutoringStudent,
             homework=True,
             paid=False
         )
@@ -142,19 +142,19 @@ class LessonRollReadSerializerTest(TestCase):
 class AttendanceUpdateSerializerTest(TestCase):
     def test_valid_attendance_data(self):
         data = {
-            'student': 1,
+            'tutoringStudent': 1,
             'homework': True,
             'paid': False
         }
         serializer = AttendanceUpdateSerializer(data=data)
         
         assert serializer.is_valid()
-        assert serializer.validated_data['student'] == 1
+        assert serializer.validated_data['tutoringStudent'] == 1
         assert serializer.validated_data['homework'] is True
         assert serializer.validated_data['paid'] is False
 
     def test_defaults(self):
-        data = {'student': 1}
+        data = {'tutoringStudent': 1}
         serializer = AttendanceUpdateSerializer(data=data)
         
         assert serializer.is_valid()
@@ -165,17 +165,17 @@ class AttendanceUpdateSerializerTest(TestCase):
 class LessonRollUpdateSerializerTest(TestCase):
     def setUp(self):
         self.parent = Parent.objects.create(name='Test Parent', stripeId='stripe_123')
-        self.student1 = Student.objects.create(parent=self.parent)
-        self.student2 = Student.objects.create(parent=self.parent)
+        self.student1 = TutoringStudent.objects.create(parent=self.parent)
+        self.student2 = TutoringStudent.objects.create(parent=self.parent)
         self.group = Group.objects.create(tutor='Test Tutor')
-        self.group.students.add(self.student1, self.student2)
+        self.group.tutoringStudents.add(self.student1, self.student2)
         self.lesson = Lesson.objects.create(group=self.group)
 
     def test_valid_lesson_roll_update(self):
         data = {
             'attendances': [
-                {'student': self.student1.id, 'homework': True, 'paid': False},
-                {'student': self.student2.id, 'homework': False, 'paid': True}
+                {'tutoringStudent': self.student1.id, 'homework': True, 'paid': False},
+                {'tutoringStudent': self.student2.id, 'homework': False, 'paid': True}
             ],
             'notes': 'Updated notes'
         }
@@ -190,7 +190,7 @@ class LessonRollUpdateSerializerTest(TestCase):
     def test_invalid_student_ids(self):
         data = {
             'attendances': [
-                {'student': 9999, 'homework': True, 'paid': False}
+                {'tutoringStudent': 9999, 'homework': True, 'paid': False}
             ]
         }
         
@@ -202,11 +202,11 @@ class LessonRollUpdateSerializerTest(TestCase):
     def test_student_not_in_group(self):
         # Create student not in group
         other_parent = Parent.objects.create(name='Other Parent', stripeId='stripe_456')
-        other_student = Student.objects.create(parent=other_parent)
+        other_student = TutoringStudent.objects.create(parent=other_parent)
         
         data = {
             'attendances': [
-                {'student': other_student.id, 'homework': True, 'paid': False}
+                {'tutoringStudent': other_student.id, 'homework': True, 'paid': False}
             ]
         }
         
@@ -222,7 +222,7 @@ class LessonRollUpdateSerializerTest(TestCase):
         lesson_no_group = Lesson.objects.create()
         data = {
             'attendances': [
-                {'student': self.student1.id, 'homework': True, 'paid': False}
+                {'tutoringStudent': self.student1.id, 'homework': True, 'paid': False}
             ]
         }
         
