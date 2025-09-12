@@ -129,5 +129,10 @@ export async function postBulkAttendances(attendanceData) {
   }
 }
 
+// ----- Lesson Services -----
+export async function newLesson(lessonData){
+  console.log(lessonData);
+}
+
 
 export default API;
