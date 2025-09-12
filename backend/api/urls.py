@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import routers
 
 from .views import ListOrCreateGroupView, MyTokenObtainPairView, getUpdateDeleteGroupView
-from .views import bulkAddAttendances
+from .views import bulkAddAttendances, addLessons
 # Router
 router = routers.DefaultRouter()
 
@@ -13,6 +13,6 @@ urlpatterns = [
     path('groups/', ListOrCreateGroupView.as_view(), name='listOrCreateGroupView'),
     path('groups/<int:id>/', getUpdateDeleteGroupView.as_view(), name='getUpdateDeleteGroupView'),
     path('attendances/bulk/', bulkAddAttendances.as_view(), name='bulkAddAttendances'),
+    path('lessons/', addLessons.as_view(), name='addLessons'),
     path('', include(router.urls)),
 ]
-3

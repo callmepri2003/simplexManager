@@ -104,7 +104,6 @@ export default function LessonCard({ lesson, all_students }) {
         )}
 
         {/* Attendance */}
-        {console.log(attendanceData)}
         <div className="mb-3">
           <small className="text-muted d-block mb-2">Attendance</small>
           <div className="d-flex flex-wrap gap-2">

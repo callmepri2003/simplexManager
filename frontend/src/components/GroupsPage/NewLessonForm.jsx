@@ -30,7 +30,7 @@ export default function NewLessonForm({
   all_students, 
   onSubmit, 
   onCancel, 
-  isOpen 
+  isOpen,
 }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],

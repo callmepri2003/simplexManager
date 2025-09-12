@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 
 from tutoring.models import Group
-from .serializers import AttendanceSerializer, MyTokenObtainPairSerializer, GroupSerializer
+from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -23,6 +23,14 @@ class getUpdateDeleteGroupView(APIView):
 class bulkAddAttendances(APIView):
     def post(self, request):
         sz = AttendanceSerializer(data=request.data, many=True)
+        if sz.is_valid():
+            sz.save()
+            return Response(sz.data)
+        return Response(sz.errors)
+    
+class addLessons(APIView):
+    def post(self, request):
+        sz = LessonSerializer(data=request.data)
         if sz.is_valid():
             sz.save()
             return Response(sz.data)

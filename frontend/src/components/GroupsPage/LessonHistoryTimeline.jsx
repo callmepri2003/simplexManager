@@ -1,13 +1,29 @@
 import { useState } from "react";
 import LessonCard from "./LessonCard";
 import NewLessonForm from "./NewLessonForm";
-import { newLesson } from "../../services/api";
+import { newLesson, postBulkAttendances } from "../../services/api";
 
-export default function LessonHistoryTimeline({ lessons, all_students }){
+export default function LessonHistoryTimeline({ lessons, all_students, groupId }){
   const [isOpen, setIsOpen] = useState(false);
+  
   const newLessonSubmit = (formData)=>{
     console.log(formData);
-    // newLesson(lessonData);
+    const lessonData = {
+      "group": groupId,
+      "notes": formData.notes
+    }
+    newLesson(lessonData).then((lesson)=>{
+      const lessonAttendanceData = []
+      formData.selectedStudents.forEach((student)=>{
+        lessonAttendanceData.push({
+          "lesson": lesson.data.id,
+          "tutoringStudent": student
+        })
+      })
+      postBulkAttendances(lessonAttendanceData)
+    });
+
+    
   }
   return <div className="col-md-5">
     <div className="p-4 border rounded-4 shadow-sm d-flex flex-column" style={{ maxHeight: "600px", overflowY: "auto" }}>
@@ -25,9 +41,10 @@ export default function LessonHistoryTimeline({ lessons, all_students }){
           all_students={all_students} 
           onSubmit={newLessonSubmit} 
           onCancel={()=>{console.log('cancelled')}}
-          isOpen={isOpen} />
+          isOpen={isOpen}
+          />
         {lessons.map((lesson) => (
-          <div key={lesson.id} className="d-flex mb-4">
+          <div key={lesson.id} className="d-flex">
             <LessonCard lesson={lesson} all_students={all_students}/>
           </div>
         ))}

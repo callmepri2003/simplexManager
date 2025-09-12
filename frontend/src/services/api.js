@@ -131,7 +131,11 @@ export async function postBulkAttendances(attendanceData) {
 
 // ----- Lesson Services -----
 export async function newLesson(lessonData){
-  console.log(lessonData);
+  try {
+    return API.post('/api/lessons/', lessonData);
+  } catch (err) {
+    throw err;
+  }
 }
 
 
