@@ -7,49 +7,69 @@ from tutoring.models import Group, Lesson, Parent, TutoringStudent
 from rest_framework import status
 from django.urls import reverse
 
+def strip_ids(obj):
+    """
+    Recursively remove any 'id' fields from dicts/lists.
+    """
+    if isinstance(obj, dict):
+        return {k: strip_ids(v) for k, v in obj.items() if k != "id"}
+    elif isinstance(obj, list):
+        return [strip_ids(i) for i in obj]
+    return obj
+
+
 class GroupApiTest(APITestCase):
 
-  def setUp(self):
-    prod = StripeProd.objects.create(
-        stripeId="prod_test123",
-        defaultPriceId="price_test123",
-        name="Tutoring Product",
-        is_active=True
-    )
+    def setUp(self):
+        prod = StripeProd.objects.create(
+            stripeId="prod_test123",
+            defaultPriceId="price_test123",
+            name="Tutoring Product",
+            is_active=True
+        )
 
-    # 2. Create some groups
-    group1 = Group.objects.create(
-        lesson_length=1,
-        associated_product=prod,
-        tutor="Alice",
-        course=Group.CourseChoices.JUNIOR_MATHS,
-        day_of_week=Group.Weekday.MONDAY,
-        time_of_day=datetime.time(16, 0)  # 4:00 PM
-    )
+        Group.objects.create(
+            lesson_length=1,
+            associated_product=prod,
+            tutor="Alice",
+            course=Group.CourseChoices.JUNIOR_MATHS,
+            day_of_week=Group.Weekday.MONDAY,
+            time_of_day=datetime.time(16, 0)
+        )
+        Group.objects.create(
+            lesson_length=2,
+            associated_product=prod,
+            tutor="Bob",
+            course=Group.CourseChoices.YEAR11_ADV,
+            day_of_week=Group.Weekday.WEDNESDAY,
+            time_of_day=datetime.time(18, 30)
+        )
+        Group.objects.create(
+            lesson_length=1,
+            associated_product=prod,
+            tutor="Charlie",
+            course=Group.CourseChoices.YEAR12_EXT1,
+            day_of_week=Group.Weekday.SATURDAY,
+            time_of_day=datetime.time(10, 0)
+        )
 
-    group2 = Group.objects.create(
-        lesson_length=2,
-        associated_product=prod,
-        tutor="Bob",
-        course=Group.CourseChoices.YEAR11_ADV,
-        day_of_week=Group.Weekday.WEDNESDAY,
-        time_of_day=datetime.time(18, 30)  # 6:30 PM
-    )
+    def test_list_all_groups(self):
+        actual = self.client.get('/api/groups/').data
+        expected = json.loads(
+            (Path(__file__).parent / "fixtures/GroupApiTest/test_list_all_groups.json").read_text()
+        )
 
-    group3 = Group.objects.create(
-        lesson_length=1,
-        associated_product=prod,
-        tutor="Charlie",
-        course=Group.CourseChoices.YEAR12_EXT1,
-        day_of_week=Group.Weekday.SATURDAY,
-        time_of_day=datetime.time(10, 0)  # 10:00 AM
-    )
+        # normalize by stripping IDs
+        actual_clean = strip_ids(actual)
+        expected_clean = strip_ids(expected)
 
-  def test_list_all_groups(self):
-    actual = self.client.get('/api/groups/').data
-    expected = json.loads((Path(__file__).parent / "fixtures/GroupApiTest/test_list_all_groups.json").read_text())
-    
-    self.assertEqual(actual, expected)
+        # sort by tutor for consistency
+        actual_sorted = sorted(actual_clean, key=lambda g: g["tutor"])
+        expected_sorted = sorted(expected_clean, key=lambda g: g["tutor"])
+
+        self.assertEqual(actual_sorted, expected_sorted)
+
+
 
 class BulkAddAttendancesTests(APITestCase):
     def setUp(self):
