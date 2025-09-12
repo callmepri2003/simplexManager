@@ -1,39 +1,59 @@
 import { useState } from "react";
+import { postBulkAttendances } from "../../services/api";
 
-export default function LessonCard({ lesson }) {
+export default function LessonCard({ lesson, all_students }) {
 
   const [changed, setChanged] = useState(false);
 
   const standardiseAttendanceData = (all_students, attendances) => {
     const newAttendanceData = {};
-
     all_students.forEach(student => {
       const isPresent = attendances.some(a => {
-        return a.student_info.display_name === student.display_name;
+        return a.tutoringStudent === student.id;
       });
       newAttendanceData[student.id] = {...student}
+      newAttendanceData[student.id].tutoringStudent = student.id;
       newAttendanceData[student.id].present = isPresent;
     });
     return newAttendanceData;
   };
 
   const [attendanceData, setAttendanceData] = useState(
-    standardiseAttendanceData(lesson.all_students, lesson.attendances)
+    standardiseAttendanceData(all_students, lesson.attendances)
   );
 
-  const toggleAttendance = (display_name) => {
+  const toggleAttendance = (id) => {
     const newAttendanceData = { ...attendanceData };
-
     Object.values(attendanceData).forEach(student => {
-      if (student.display_name === display_name) {
+      if (student.id == id) {
         newAttendanceData[student.id].present = !newAttendanceData[student.id].present;
-      }else{
       }
     });
     setAttendanceData(newAttendanceData);
+    setChanged(true)
   };
 
+  const handleSubmit = (lessonId) => {
+    // POST (Bulk)
 
+    const processedAttendanceData = [];
+    Object.values(attendanceData).forEach((attendanceRecord)=>{
+      attendanceRecord.lesson = lesson.id
+      processedAttendanceData.push(attendanceRecord)
+    })
+
+    try {
+      const result = postBulkAttendances(processedAttendanceData).then((result)=>{
+        console.log("Saved:", result);
+      });
+      
+    } catch (error) {
+      console.error("Error saving:", error);
+    }
+
+
+  }
+  
   return (
     <div style={{width:"100%"}} key={lesson.id} className="d-flex mb-4">
       {/* Timeline dot */}
@@ -84,21 +104,24 @@ export default function LessonCard({ lesson }) {
         )}
 
         {/* Attendance */}
+        {console.log(attendanceData)}
         <div className="mb-3">
           <small className="text-muted d-block mb-2">Attendance</small>
           <div className="d-flex flex-wrap gap-2">
-            {console.log(attendanceData)}
             {Object.values(attendanceData).map((attendance) => {
               return <span
                 data-cy={`student${attendance.id}`}
                 key={attendance.id}
-                className={`badge rounded-pill px-3 py-2 shadow-sm ${
+                id={attendance.id}
+                present={attendance.present ? "true" : undefined}
+                tutoringstudent = {attendance.tutoringStudent}
+                className={`nametag lsn-${lesson.id} badge rounded-pill px-3 py-2 shadow-sm ${
                   attendance.present ? "bg-success" : "bg-primary"
                 }`}
                 style={{ cursor: "pointer", transition: "0.2s" }}
-                onClick={() => toggleAttendance(attendance.display_name)}
+                onClick={() => toggleAttendance(attendance.id)}
               >
-                {attendance.display_name}
+                {attendance.name}
               </span>
               })}
 
@@ -115,7 +138,7 @@ export default function LessonCard({ lesson }) {
           <div className="d-flex justify-content-end mt-3">
             <button
               className="btn btn-success btn-sm shadow-sm"
-              onClick={handleSubmit}
+              onClick={()=>handleSubmit(`lsn-${lesson.id}`)}
             >
               Save Attendance
             </button>

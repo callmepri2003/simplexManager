@@ -116,5 +116,18 @@ export function useGetGroup(id){
   return [groupInformation, loading, error]
 }
 
+// ----- Attendance Services -----
+
+// POST (Bulk)
+export async function postBulkAttendances(attendanceData) {
+  console.log(attendanceData)
+  try {
+    const res = await API.post('/api/attendances/bulk/', attendanceData);
+    return res.data; // success
+  } catch (err) {
+    throw err; // let caller handle error
+  }
+}
+
 
 export default API;

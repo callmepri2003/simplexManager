@@ -1,7 +1,7 @@
 import LessonCard from "./LessonCard";
 
-export default function LessonHistoryTimeline({ lessons }){
-  
+export default function LessonHistoryTimeline({ lessons, all_students }){
+
   return <div className="col-md-5">
     <div className="p-4 border rounded-4 shadow-sm d-flex flex-column" style={{ maxHeight: "600px", overflowY: "auto" }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -12,9 +12,9 @@ export default function LessonHistoryTimeline({ lessons }){
       </div>
 
       <div className="d-flex flex-column gap-4">
-        {lessons.data?.lessons.map((lesson) => (
+        {lessons.map((lesson) => (
           <div key={lesson.id} className="d-flex mb-4">
-            <LessonCard lesson={lesson}/>
+            <LessonCard lesson={lesson} all_students={all_students}/>
           </div>
         ))}
 

@@ -53,7 +53,7 @@ export default function GroupsExplorePage() {
               <dd className="col-sm-8">{groupInformation.time_of_day}</dd>
             </dl>
           </div>
-          {/* <LessonHistoryTimeline lessons={lessons}/> */}
+          <LessonHistoryTimeline lessons={groupInformation.lessons} all_students={groupInformation.tutoringStudents}/>
         </div>
       </div>
     </div>
