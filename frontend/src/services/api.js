@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useEffect, useState } from "react";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -83,38 +84,50 @@ API.interceptors.response.use(
 export const login = (username, password) => API.post("/api/token/", { username, password });
 export const refreshToken = (refresh) => API.post("/api/token/refresh/", { refresh });
 
-// ----- Protected Endpoints -----
-export const getDashboard = () => API.get("/dashboard");
-export const getAdminPanel = () => API.get("/admin");
-
 // ----- Groups Services -----
-export const AllGroups = () => API.get("/api/groups/");
 
-export const CreateGroup = (data) => API.post("/api/groups/", data);
+// GET *
+export function useGetAllGroups(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-export const RetrieveGroup = (id) => API.get(`/api/groups/${id}/`);
+  useEffect(() => {
+    API.get('/api/groups/')
+      .then(res => setData(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [])
+  return [data, loading, error]
+}
 
-export const UpdateGroup = (id, data) => API.put(`/api/groups/${id}/`, data);
+// GET :id
+export function useGetGroup(id){
+  const [groupInformation, setGroupInformation] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-export const DeleteGroup = (id) => API.delete(`/api/groups/${id}/`);
+  useEffect(() => {
+    API.get(`/api/groups/${id}/`)
+      .then(res => setGroupInformation(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [id])
+  return [groupInformation, loading, error]
+}
 
-// ----- Lesson Roll Services -----
+// ----- Attendance Services -----
 
-// Get lesson roll data
-export const getLessonRoll = (lessonId) => API.get(`/api/lessons/${lessonId}/roll/`);
+// POST (Bulk)
+export async function postBulkAttendances(attendanceData) {
+  console.log(attendanceData)
+  try {
+    const res = await API.post('/api/attendances/bulk/', attendanceData);
+    return res.data; // success
+  } catch (err) {
+    throw err; // let caller handle error
+  }
+}
 
-// Update lesson roll (POST)
-export const updateLessonRoll = (lessonId, data) => API.post(`/api/lessons/${lessonId}/roll/`, data);
-
-// Update lesson roll (PUT)
-export const updateLessonRollPut = (lessonId, data) => API.put(`/api/lessons/${lessonId}/roll/`, data);
-
-// Reset lesson roll
-export const resetLessonRoll = (lessonId) => API.delete(`/api/lessons/${lessonId}/roll/reset/`);
-
-// Get lesson attendance summary
-export const getLessonRollSummary = (lessonId) => API.get(`/api/lessons/${lessonId}/roll/summary/`);
-
-export const getLessonByGroup = (groupId) => API.get(`/api/lessons/group/${groupId}/`);
 
 export default API;

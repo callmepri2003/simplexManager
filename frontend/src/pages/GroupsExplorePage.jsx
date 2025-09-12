@@ -1,35 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getLessonByGroup, getLessonRoll, RetrieveGroup } from "../services/api";
 import LessonHistoryTimeline from "../components/GroupsPage/LessonHistoryTimeline";
+import { useGetGroup } from "../services/api";
+import { formatDayAndTime } from "../utils/helper";
 
 export default function GroupsExplorePage() {
   const { id } = useParams();
-  const [groupInformation, setGroupInformation] = useState(null);
-  const [lessons, setLessons] = useState({})
-
-  useEffect(()=>{
-    async function getLessonhistory(){
-      setLessons(await getLessonByGroup(id));
-    }
-    getLessonhistory();
-  },[])
-
-  useEffect(() => {
-    async function fetchGroup() {
-      try {
-        const response = await RetrieveGroup(id);
-        setGroupInformation(response.data);
-      } catch (error) {
-        console.error("Failed to fetch group:", error);
-      }
-    }
-
-    fetchGroup();
-  }, [id]);
+  
+  const [ groupInformation, loading, error ] = useGetGroup(id);
 
   if (!groupInformation) return <div className="text-center p-5">Loading...</div>;
-
   return (
     <div className="container-fluid p-0">
       {/* Hero Section */}
@@ -48,7 +28,7 @@ export default function GroupsExplorePage() {
           <h1 className="fw-bold display-5 mb-2">{groupInformation.course}</h1>
           <h5 className="fw-light">with {groupInformation.tutor}</h5>
           <span className="badge bg-light text-dark rounded-pill mt-2 px-3 py-2 shadow-sm">
-            {groupInformation.weekly_time}
+            {formatDayAndTime(groupInformation.day_of_week, groupInformation.time_of_day)}
           </span>
         </div>
       </div>
@@ -64,16 +44,16 @@ export default function GroupsExplorePage() {
               <dd className="col-sm-8">{groupInformation.lesson_length} hr(s)</dd>
 
               <dt className="col-sm-4">Associated Product</dt>
-              <dd className="col-sm-8">{groupInformation.associated_product}</dd>
+              <dd className="col-sm-8">{groupInformation.associated_product.name}</dd>
 
-              <dt className="col-sm-4">Day of Week</dt>
-              <dd className="col-sm-8">{groupInformation.weekly_time}</dd>
+              <dt className="col-sm-4">Time and Day of Week</dt>
+              <dd className="col-sm-8">{formatDayAndTime(groupInformation.day_of_week, groupInformation.time_of_day)}</dd>
 
               <dt className="col-sm-4">Time of Day</dt>
               <dd className="col-sm-8">{groupInformation.time_of_day}</dd>
             </dl>
           </div>
-          <LessonHistoryTimeline lessons={lessons}/>
+          <LessonHistoryTimeline lessons={groupInformation.lessons} all_students={groupInformation.tutoringStudents}/>
         </div>
       </div>
     </div>

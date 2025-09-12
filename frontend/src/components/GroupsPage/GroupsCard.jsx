@@ -12,6 +12,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from 'react-router-dom';
+import { formatDayAndTime } from '../../utils/helper';
 
 export default function GroupsCard(props) {
   const navigate = useNavigate();
@@ -36,7 +37,6 @@ export default function GroupsCard(props) {
   const getTutorInitials = (name) => {
     return name ? name.charAt(0).toUpperCase() : 'T';
   };
-
   return (
     <Card 
       sx={{ 
@@ -96,7 +96,9 @@ export default function GroupsCard(props) {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
           <AccessTimeIcon color="action" fontSize="small" />
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {weekly_time || 'Schedule TBA'}
+            {
+              formatDayAndTime(day_of_week, time_of_day)
+            }
           </Typography>
         </Box>
 
@@ -109,7 +111,7 @@ export default function GroupsCard(props) {
           />
           {associated_product && (
             <Chip 
-              label={`${associated_product}`}
+              label={`${associated_product.name}`}
               size="small"
               variant="outlined"
               color="secondary"
