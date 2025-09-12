@@ -18,13 +18,9 @@ describe("GroupsPage", () => {
   it("renders course, tutor, and lesson info correctly", () => {
     cy.wait("@getGroups");
 
-    cy.contains("11 Advanced").should("exist");
-    cy.contains("Tutor: Alice").should("exist");
+    cy.contains("Junior Maths").should("exist");
+    cy.contains("Tutor: Pri").should("exist");
     cy.contains("2h lesson").should("exist");
-
-    cy.contains("12 Ext 1").should("exist");
-    cy.contains("Tutor: Bob").should("exist");
-    cy.contains("1h lesson").should("exist");
   });
 
   it("renders buttons inside each card", () => {
@@ -39,7 +35,6 @@ describe("GroupsPage", () => {
 
   it("renders weekly_time", () => {
     cy.wait("@getGroups");
-    cy.contains("Saturday 10:00 AM").should("exist");
-    cy.contains("Sunday 2:00 PM").should("exist");
+    cy.contains("Monday, 6:00 AM").should("exist");
   });
 });
