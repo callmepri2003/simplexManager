@@ -1,3 +1,5 @@
+import base64
+from django.urls import reverse
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
@@ -32,9 +34,11 @@ class AttendanceSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ResourceSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Resource
-        fields = '__all__'
+        fields = "__all__"
+
 
 class LessonSerializer(serializers.ModelSerializer):
     attendances = AttendanceSerializer(many=True, read_only=True)

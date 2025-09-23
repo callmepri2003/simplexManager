@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { postBulkAttendances } from "../../services/api";
+import { ResourceItem } from "./ResourceItem";
 
 export default function LessonCard({ lesson, all_students }) {
 
@@ -84,21 +85,14 @@ export default function LessonCard({ lesson, all_students }) {
         </h6>
 
         {/* Resources */}
+        {console.log(lesson.resources)}
         {lesson.resources && lesson.resources.length > 0 && (
           <div className="mb-2">
             <small className="text-muted d-block">Resources</small>
             <div className="d-flex flex-wrap gap-2 mt-1">
-              {lesson.resources.map((res, idx) => (
-                <a
-                  key={idx}
-                  href={res.file_url || "#"}
-                  className="badge bg-primary bg-opacity-75 text-decoration-none"
-                >
-                  {res.file_url
-                    ? res.file_url.split("/").pop().split(".")[0]
-                    : `Resource ${idx + 1}`}
-                </a>
-              ))}
+              {lesson.resources.map((resource) => {
+                return <ResourceItem key={resource.id} resource={resource} />
+              })}
             </div>
           </div>
         )}

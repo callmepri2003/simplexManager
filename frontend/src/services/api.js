@@ -138,5 +138,32 @@ export async function newLesson(lessonData){
   }
 }
 
+// ----- Resource Services -----
+export async function newResources(resourcesData){
+  try {
+    return API.post('/api/resources/bulk/', resourcesData);
+  } catch (err) {
+    throw err;
+  }
+}
+
+export function useGetFileUrl(fileKey) {
+  const [url, setUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    if (!fileKey) {
+      setLoading(false);
+      return;
+    }
+
+    API.get(`/api/file/${encodeURIComponent(fileKey)}/`)
+      .then(res => setUrl(res.data.url))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false));
+  }, [fileKey]);
+
+  return [url, loading, error];
+}
 
 export default API;

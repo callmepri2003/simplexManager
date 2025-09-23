@@ -3,7 +3,6 @@ from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd
 from django.db.models.signals import post_save
-from cloudinary.models import CloudinaryField
 import base64
 
 
@@ -77,10 +76,16 @@ class Lesson(models.Model):
 
 class Resource(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="resources")
-    file = CloudinaryField("Resource", resource_type="auto")
-
-    def __str__(self):
-        return self.file.public_id if self.file else "Resource"
+    file = models.FileField(upload_to='trial1/')
+    name = models.CharField(max_length=200)
+    
+    def save(self, *args, **kwargs):
+        print(f"About to save file: {self.file.name if self.file else 'No file'}")
+        result = super().save(*args, **kwargs)
+        if self.file:
+            print(f"File saved to: {self.file.url}")
+            print(f"File storage: {type(self.file.storage)}")
+        return result
 
 class Attendance(models.Model):
   lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')

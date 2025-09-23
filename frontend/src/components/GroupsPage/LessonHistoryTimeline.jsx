@@ -1,7 +1,7 @@
 import { useState } from "react";
 import LessonCard from "./LessonCard";
 import NewLessonForm from "./NewLessonForm";
-import { newLesson, postBulkAttendances } from "../../services/api";
+import { newLesson, newResources, postBulkAttendances } from "../../services/api";
 
 export default function LessonHistoryTimeline({ lessons, all_students, groupId }){
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +21,18 @@ export default function LessonHistoryTimeline({ lessons, all_students, groupId }
         })
       })
       postBulkAttendances(lessonAttendanceData)
+      const fileFormData = new FormData();
+
+      formData.resources.forEach((resource) => {
+        console.log("resource type:", resource.file.constructor.name, resource.file);
+        fileFormData.append("file", resource.file);  
+      });
+      fileFormData.append("lesson", lesson.data.id);
+      for (let [key, value] of fileFormData.entries()) {
+        console.log(key, value);
+      }
+      console.log(newResources(fileFormData));
+      
     });
 
     
