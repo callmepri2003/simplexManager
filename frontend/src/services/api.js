@@ -120,7 +120,6 @@ export function useGetGroup(id){
 
 // POST (Bulk)
 export async function postBulkAttendances(attendanceData) {
-  console.log(attendanceData)
   try {
     const res = await API.post('/api/attendances/bulk/', attendanceData);
     return res.data; // success
@@ -140,30 +139,12 @@ export async function newLesson(lessonData){
 
 // ----- Resource Services -----
 export async function newResources(resourcesData){
+  console.log(resourcesData.values());
   try {
     return API.post('/api/resources/bulk/', resourcesData);
   } catch (err) {
     throw err;
   }
-}
-
-export function useGetFileUrl(fileKey) {
-  const [url, setUrl] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  useEffect(() => {
-    if (!fileKey) {
-      setLoading(false);
-      return;
-    }
-
-    API.get(`/api/file/${encodeURIComponent(fileKey)}/`)
-      .then(res => setUrl(res.data.url))
-      .catch(err => setError(err))
-      .finally(() => setLoading(false));
-  }, [fileKey]);
-
-  return [url, loading, error];
 }
 
 export default API;

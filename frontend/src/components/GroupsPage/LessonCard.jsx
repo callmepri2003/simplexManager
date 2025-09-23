@@ -85,7 +85,6 @@ export default function LessonCard({ lesson, all_students }) {
         </h6>
 
         {/* Resources */}
-        {console.log(lesson.resources)}
         {lesson.resources && lesson.resources.length > 0 && (
           <div className="mb-2">
             <small className="text-muted d-block">Resources</small>

@@ -7,7 +7,6 @@ export default function LessonHistoryTimeline({ lessons, all_students, groupId }
   const [isOpen, setIsOpen] = useState(false);
   
   const newLessonSubmit = (formData)=>{
-    console.log(formData);
     const lessonData = {
       "group": groupId,
       "notes": formData.notes
@@ -24,14 +23,14 @@ export default function LessonHistoryTimeline({ lessons, all_students, groupId }
       const fileFormData = new FormData();
 
       formData.resources.forEach((resource) => {
-        console.log("resource type:", resource.file.constructor.name, resource.file);
+        // console.log("resource type:", resource.file.constructor.name, resource.file);
         fileFormData.append("file", resource.file);  
       });
       fileFormData.append("lesson", lesson.data.id);
-      for (let [key, value] of fileFormData.entries()) {
-        console.log(key, value);
-      }
-      console.log(newResources(fileFormData));
+      // for (let [key, value] of fileFormData.entries()) {
+      //   console.log(key, value);
+      // }
+      // console.log(newResources(fileFormData));
       
     });
 
