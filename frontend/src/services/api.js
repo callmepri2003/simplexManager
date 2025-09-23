@@ -139,7 +139,7 @@ export async function newLesson(lessonData){
 
 // ----- Resource Services -----
 export async function newResources(resourcesData){
-  console.log(resourcesData.values());
+  console.log(resourcesData);
   try {
     return API.post('/api/resources/bulk/', resourcesData);
   } catch (err) {

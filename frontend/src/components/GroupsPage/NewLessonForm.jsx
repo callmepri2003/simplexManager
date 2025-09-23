@@ -111,6 +111,7 @@ export default function NewLessonForm({
     setIsSubmitting(true);
     
     try {
+      console.log("Resources in state:", formData.resources);
       await onSubmit(formData);
       // Reset form after successful submission
       setFormData({
