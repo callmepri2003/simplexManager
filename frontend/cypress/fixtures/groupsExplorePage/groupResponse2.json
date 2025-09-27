@@ -1,0 +1,13 @@
+{
+  "id": 2,
+  "course": "Empty Course",
+  "tutor": "Dr. Jones",
+  "day_of_week": "1",
+  "time_of_day": "2:00 PM",
+  "lesson_length": 1,
+  "image_base64": null,
+  "associated_product": {
+    "name": "Empty Course Package"
+  },
+  "lessons": []
+}

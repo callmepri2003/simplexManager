@@ -1,0 +1,37 @@
+{
+    "id": 1,
+    "course": "Advanced Mathematics",
+    "tutor": "Dr. Smith",
+    "day_of_week": "0",
+    "time_of_day": "10:00 AM",
+    "lesson_length": 2,
+    "image_base64": null,
+    "associated_product": {
+      "name": "Math Fundamentals Course"
+    },
+    "lessons": [
+      {
+        "id": 1,
+        "date": "2024-01-15",
+        "notes": "Today we covered quadratic equations and their applications.",
+        "resources": [
+          {
+            "id": 1,
+            "name": "Quadratic Equations Worksheet.pdf",
+            "file": "https://example.com/worksheet.pdf"
+          },
+          {
+            "id": 2,
+            "name": "Practice Problems.docx",
+            "file": "https://example.com/practice.docx"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "date": "2024-01-22",
+        "notes": "",
+        "resources": []
+      }
+    ]
+}

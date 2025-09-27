@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useGetGroup } from "../services/api";
 import { formatDayAndTime } from "../utils/helper";
+import LessonsSection from "../components/GroupsPage/LessonsSection";
 
 export default function GroupsExplorePage() {
   const { id } = useParams();
@@ -9,6 +10,7 @@ export default function GroupsExplorePage() {
   const [ groupInformation, loading, error ] = useGetGroup(id);
   
   if (!groupInformation) return <div className="text-center p-5">Loading...</div>;
+
   return (
     <div className="container-fluid p-0">
       {/* Hero Section */}
@@ -36,7 +38,7 @@ export default function GroupsExplorePage() {
       <div className="container py-5">
         <div className="row g-5">
           {/* Left side - Key Details */}
-          <div className="col-md-7">
+          <div className="col-md-6">
             <h2 className="fw-semibold mb-4">Class Details</h2>
             <dl className="row mb-0">
               <dt className="col-sm-4">Lesson Length</dt>
@@ -51,6 +53,11 @@ export default function GroupsExplorePage() {
               <dt className="col-sm-4">Time of Day</dt>
               <dd className="col-sm-8">{groupInformation.time_of_day}</dd>
             </dl>
+          </div>
+
+          {/* Right side - Lessons */}
+          <div className="col-md-6">
+            <LessonsSection lessons={groupInformation.lessons} />
           </div>
         </div>
       </div>
