@@ -120,7 +120,6 @@ export function useGetGroup(id){
 
 // POST (Bulk)
 export async function postBulkAttendances(attendanceData) {
-  console.log(attendanceData)
   try {
     const res = await API.post('/api/attendances/bulk/', attendanceData);
     return res.data; // success
@@ -129,5 +128,22 @@ export async function postBulkAttendances(attendanceData) {
   }
 }
 
+// ----- Lesson Services -----
+export async function newLesson(lessonData){
+  try {
+    return API.post('/api/lessons/', lessonData);
+  } catch (err) {
+    throw err;
+  }
+}
+
+// ----- Resource Services -----
+export async function newResources(resourcesData){
+  try {
+    return API.post('/api/resources/bulk/', resourcesData);
+  } catch (err) {
+    throw err;
+  }
+}
 
 export default API;

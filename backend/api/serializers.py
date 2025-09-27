@@ -1,8 +1,10 @@
+import base64
+from django.urls import reverse
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
 from stripeInt.models import StripeProd
-from tutoring.models import Attendance, Group, Lesson, TutoringStudent
+from tutoring.models import Attendance, Group, Lesson, Resource, TutoringStudent
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -31,8 +33,16 @@ class AttendanceSerializer(serializers.ModelSerializer):
         model = Attendance
         fields = '__all__'
 
+class ResourceSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Resource
+        fields = "__all__"
+
+
 class LessonSerializer(serializers.ModelSerializer):
     attendances = AttendanceSerializer(many=True, read_only=True)
+    resources = ResourceSerializer(many=True, read_only=True)
 
     class Meta:
         model = Lesson

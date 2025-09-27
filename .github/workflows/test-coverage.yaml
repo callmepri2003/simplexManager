@@ -61,7 +61,7 @@ jobs:
         coverage report --fail-under=80
         coverage xml
   
-  cypress-tests:
+  cypree2ss-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
