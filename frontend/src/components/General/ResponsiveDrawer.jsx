@@ -17,19 +17,20 @@ import MenuIcon from '@mui/icons-material/Menu';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { Link, Routes, Route } from "react-router-dom";
-import CalendarPage from '../pages/CalendarPage';
+import CalendarPage from '../../pages/CalendarPage';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { SignInPage } from '@toolpad/core/SignInPage';
-import LoginPage from '../pages/LoginPage';
-import UnauthenticatedRoute from '../privateRoutes/UnauthenticatedRoute';
-import AuthenticatedRoute from '../privateRoutes/AuthenticatedRoute';
-import UnauthorisedPage from '../pages/UnauthorisedPage';
-import LogoutPage from '../pages/LogoutPage';
-import AdminRoute from '../privateRoutes/AdminAuthRoute';
-import GroupsPage from '../pages/GroupsPage';
+import LoginPage from '../../pages/LoginPage';
+import UnauthenticatedRoute from '../../privateRoutes/UnauthenticatedRoute';
+import AuthenticatedRoute from '../../privateRoutes/AuthenticatedRoute';
+import UnauthorisedPage from '../../pages/UnauthorisedPage';
+import LogoutPage from '../../pages/LogoutPage';
+import AdminRoute from '../../privateRoutes/AdminAuthRoute';
+import GroupsPage from '../../pages/GroupsPage';
 import ClassIcon from '@mui/icons-material/Class';
-import GroupsExplorePage from '../pages/GroupsExplorePage';
+import GroupsExplorePage from '../../pages/GroupsExplorePage';
+import EmptyPage from './EmptyPage';
 
 const drawerWidth = 240;
 
@@ -199,7 +200,7 @@ function ResponsiveDrawer(props) {
           <Route path="*" element={
             <AuthenticatedRoute>
               <AdminRoute>
-                <h2>Welcome! Pick a section from the menu.</h2>
+                <EmptyPage/>
               </AdminRoute>
             </AuthenticatedRoute>
             } />

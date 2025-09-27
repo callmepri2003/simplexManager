@@ -1,4 +1,4 @@
-import SpacedComponent from "../components/SpacedComponent";
+import SpacedComponent from "../components/General/SpacedComponent";
 
 export default function CalendarPage(){
   return <>
