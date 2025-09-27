@@ -83,14 +83,14 @@ function ResponsiveDrawer(props) {
               <ListItemText primary={"Groups"} />
             </ListItemButton>
           </ListItem>
-        <ListItem component={Link} to={"/calendar"} key={"Calendar"} disablePadding>
+        {/* <ListItem component={Link} to={"/calendar"} key={"Calendar"} disablePadding>
             <ListItemButton>
               <ListItemIcon>
                 <CalendarMonthIcon/>
               </ListItemIcon>
               <ListItemText primary={"Calendar"} />
             </ListItemButton>
-          </ListItem>
+          </ListItem> */}
       </List>
       <Divider />
       <List>

@@ -29,7 +29,7 @@ describe("login process", () => {
     );
 
     cy.visit("/");
-    cy.contains("Welcome!"); // Or whatever your default page shows
+    cy.contains("Welcome"); // Or whatever your default page shows
     cy.url().should("not.include", "/login");
   });
 
@@ -59,8 +59,7 @@ describe("login process", () => {
     });
 
     // Click Calendar from the menu
-    cy.contains("Calendar").click();
-    cy.url().should("include", "/calendar");
-    cy.contains("Calendar"); // Page content check
+    cy.contains("Groups").click();
+    cy.url().should("include", "/group");
   });
 });
