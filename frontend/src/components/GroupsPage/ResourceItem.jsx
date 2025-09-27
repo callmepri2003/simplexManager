@@ -20,6 +20,7 @@ export function ResourceItem({ resource }) {
         e.currentTarget.style.transform = 'translateY(0)';
         e.currentTarget.style.boxShadow = 'none';
       }}
+      data-cy={`resource${resource.id}`}
     >
       {/* PDF Icon */}
       <div 

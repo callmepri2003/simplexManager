@@ -56,7 +56,7 @@ export default function LessonCard({ lesson, all_students }) {
   }
   
   return (
-    <div style={{width:"100%"}} key={lesson.id} className="d-flex mb-4">
+    <div data-cy={`LessonCard${lesson.id}`} style={{width:"100%"}} key={lesson.id} className="d-flex mb-4">
       {/* Timeline dot */}
       <div className="d-flex flex-column align-items-center me-3">
         <div
@@ -97,7 +97,8 @@ export default function LessonCard({ lesson, all_students }) {
         )}
 
         {/* Attendance */}
-        <div className="mb-3">
+
+        {/*<div className="mb-3">
           <small className="text-muted d-block mb-2">Attendance</small>
           <div className="d-flex flex-wrap gap-2">
             {Object.values(attendanceData).map((attendance) => {
@@ -117,8 +118,8 @@ export default function LessonCard({ lesson, all_students }) {
               </span>
               })}
 
-          </div>
-        </div>
+          </div> 
+        </div> */}
 
         {/* Notes */}
         {lesson.notes && (
@@ -126,16 +127,17 @@ export default function LessonCard({ lesson, all_students }) {
         )}
 
         {/* Save Button (appears only if changes were made) */}
-        {changed && (
+        {/* {changed && (
           <div className="d-flex justify-content-end mt-3">
             <button
               className="btn btn-success btn-sm shadow-sm"
               onClick={()=>handleSubmit(`lsn-${lesson.id}`)}
+              data-cy="saveAttendance"
             >
               Save Attendance
             </button>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import {
   People as PeopleIcon,
   AttachFile as AttachFileIcon,
 } from '@mui/icons-material';
+import { newResources } from '../../services/api';
 
 export default function NewLessonForm({ 
   all_students, 
@@ -111,7 +112,6 @@ export default function NewLessonForm({
     setIsSubmitting(true);
     
     try {
-      console.log("Resources in state:", formData.resources);
       await onSubmit(formData);
       // Reset form after successful submission
       setFormData({
@@ -195,9 +195,10 @@ export default function NewLessonForm({
                     })}
                   </Box>
                 )}
+                data-cy="selectStudents"
               >
                 {all_students.map((student) => (
-                  <MenuItem key={student.id} value={student.id}>
+                  <MenuItem key={student.id} value={student.id} data-cy={`selectStudentsOptionstudent${student.id}`}>
                     {student.name}
                   </MenuItem>
                 ))}
@@ -246,6 +247,7 @@ export default function NewLessonForm({
                   hidden
                   multiple
                   onChange={handleFileUpload}
+                  data-cy="uploadResource"
                 />
               </Button>
 
@@ -299,6 +301,7 @@ export default function NewLessonForm({
                     boxShadow: 4
                   }
                 }}
+                data-cy="createLesson"
               >
                 {isSubmitting ? 'Creating...' : 'Create Lesson'}
               </Button>
