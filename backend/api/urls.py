@@ -2,7 +2,7 @@ from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework import routers
 
-from .views import ListOrCreateGroupView, MyTokenObtainPairView, getFileUrl, getUpdateDeleteGroupView
+from .views import ListOrCreateGroupView, MyTokenObtainPairView, getUpdateDeleteGroupView
 from .views import bulkAddAttendances, addLessons, addResources
 
 # Router
@@ -16,6 +16,5 @@ urlpatterns = [
     path('attendances/bulk/', bulkAddAttendances.as_view(), name='bulkAddAttendances'),
     path('lessons/', addLessons.as_view(), name='addLessons'),
     path('resources/bulk/', addResources.as_view(), name='addResources'),
-    path('file/<path:file_key>/', getFileUrl.as_view()),
     path('', include(router.urls)),
 ]

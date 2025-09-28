@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useGetGroup } from "../../services/api";
 import { formatDayAndTime } from "../../utils/helper";
+import AddLessonForm from "./AddLessonForm/AddLessonForm";
 
 // Lessons Component
-export default function LessonsSection({ lessons }) {
+export default function LessonsSection({ groupId, lessons }) {
   if (!lessons || lessons.length === 0) {
     return (
       <div className="text-center text-muted py-4">
@@ -12,6 +13,8 @@ export default function LessonsSection({ lessons }) {
       </div>
     );
   }
+
+  const [updatedLessons, setUpdatedLessons] = useState(lessons);
 
   const formatLessonDate = (dateString) => {
     const date = new Date(dateString);
@@ -26,8 +29,9 @@ export default function LessonsSection({ lessons }) {
   return (
     <div>
       <h2 className="fw-semibold mb-4">Lessons</h2>
+      <AddLessonForm groupId={groupId} setUpdatedLessons={setUpdatedLessons}/>
       <div className="d-flex flex-column gap-3">
-        {lessons.map((lesson) => (
+        {updatedLessons.map((lesson) => (
           <div key={lesson.id} className="card border-0 shadow-sm">
             <div className="card-body p-4">
               {/* Date Header */}

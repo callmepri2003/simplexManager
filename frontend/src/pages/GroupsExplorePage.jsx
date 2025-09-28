@@ -58,7 +58,7 @@ export default function GroupsExplorePage() {
 
           {/* Right side - Lessons */}
           <div className="col-md-6">
-            <LessonsSection lessons={groupInformation.lessons} />
+            <LessonsSection groupId={id} lessons={groupInformation.lessons} />
           </div>
         </div>
       </div>
