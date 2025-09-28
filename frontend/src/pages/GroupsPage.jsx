@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import GroupsCard from "../components/GroupsPage/GroupsCard";
 import { useGetAllGroups } from "../services/api";
-import { Skeleton } from "@mui/material";
+import Loading from '../components/Loading'
 
 export default function GroupsPage() {
 
@@ -16,27 +16,7 @@ export default function GroupsPage() {
         (
           <>
             
-            <div className="groupsCardContainerIndividual col-lg-3 col-md-6 col-sm-12"
-              style={{
-                display: "flex",
-                justifyContent:"center",
-              }}>
-              <Skeleton variant="rounded" width={310} height={450} />
-            </div>
-            <div className="groupsCardContainerIndividual col-lg-3 col-md-6 col-sm-12"
-              style={{
-                display: "flex",
-                justifyContent:"center",
-              }}>
-              <Skeleton variant="rounded" width={310} height={450} />
-            </div>
-            <div className="groupsCardContainerIndividual col-lg-3 col-md-6 col-sm-12"
-              style={{
-                display: "flex",
-                justifyContent:"center",
-              }}>
-              <Skeleton variant="rounded" width={310} height={450} />
-            </div>
+            <Loading/>
 
           </>
         ) :
