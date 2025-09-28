@@ -94,7 +94,7 @@ export function useGetAllGroups(){
 
   useEffect(() => {
     API.get('/api/groups/')
-      .then(res => setData(res.data))
+      .then(res => {setData(res.data)})
       .catch(err => setError(err))
       .finally(() => setLoading(false))
   }, [])

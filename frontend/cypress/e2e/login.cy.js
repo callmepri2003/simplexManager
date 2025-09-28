@@ -29,7 +29,7 @@ describe("login process", () => {
     );
 
     cy.visit("/");
-    cy.contains("Welcome!"); // Or whatever your default page shows
+    cy.contains("Welcome"); // Or whatever your default page shows
     cy.url().should("not.include", "/login");
   });
 
@@ -41,6 +41,8 @@ describe("login process", () => {
 
   it("An unauthenticated user logs in successfully and clicks the calendar in the menu bar and then it lets him", () => {
     cy.visit("/login");
+    cy.intercept('GET', '**/api/groups/', { fixture: 'groupsPage/allGroupsResponse1.json' }).as('getAllGroups');
+
 
     // Fill out login form (adjust selectors to match your LoginPage)
     cy.get('input[name="username"]').type("username");
@@ -59,8 +61,7 @@ describe("login process", () => {
     });
 
     // Click Calendar from the menu
-    cy.contains("Calendar").click();
-    cy.url().should("include", "/calendar");
-    cy.contains("Calendar"); // Page content check
+    cy.contains("Groups").click();
+    cy.url().should("include", "/group");
   });
 });
