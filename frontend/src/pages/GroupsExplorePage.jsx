@@ -3,13 +3,14 @@ import { useParams } from "react-router-dom";
 import { useGetGroup } from "../services/api";
 import { formatDayAndTime } from "../utils/helper";
 import LessonsSection from "../components/GroupsPage/LessonsSection";
+import Loading from "../components/Loading";
 
 export default function GroupsExplorePage() {
   const { id } = useParams();
   
   const [ groupInformation, loading, error ] = useGetGroup(id);
-  
-  if (!groupInformation) return <div className="text-center p-5">Loading...</div>;
+
+  if (loading || !groupInformation ) return <Loading/>
 
   return (
     <div className="container-fluid p-0">
