@@ -66,9 +66,9 @@ class Group(models.Model):
            return ""
 
 class Lesson(models.Model):
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons", null=True)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons")
     notes = models.CharField(max_length=100, null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField()
 
     def __str__(self):
         return f"Lesson {self.id} - {self.notes or 'No notes'}"
