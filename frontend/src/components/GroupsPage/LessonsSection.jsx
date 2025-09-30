@@ -3,18 +3,20 @@ import { useParams } from "react-router-dom";
 import { useGetGroup } from "../../services/api";
 import { formatDayAndTime } from "../../utils/helper";
 import AddLessonForm from "./AddLessonForm/AddLessonForm";
+import DeleteLessonBtn from "./DeleteBtn";
 
 // Lessons Component
 export default function LessonsSection({ groupId, lessons }) {
-  if (!lessons || lessons.length === 0) {
+  const [updatedLessons, setUpdatedLessons] = useState(lessons);
+
+  if (!updatedLessons || updatedLessons.length === 0) {
     return (
       <div className="text-center text-muted py-4">
+        <AddLessonForm groupId={groupId} setUpdatedLessons={setUpdatedLessons}/>
         <p className="mb-0">No lessons available</p>
       </div>
     );
   }
-
-  const [updatedLessons, setUpdatedLessons] = useState(lessons);
 
   const formatLessonDate = (dateString) => {
     const date = new Date(dateString);
@@ -32,7 +34,8 @@ export default function LessonsSection({ groupId, lessons }) {
       <AddLessonForm groupId={groupId} setUpdatedLessons={setUpdatedLessons}/>
       <div className="d-flex flex-column gap-3">
         {updatedLessons.map((lesson) => (
-          <div key={lesson.id} className="card border-0 shadow-sm">
+          <div key={lesson.id} className="card border-0 shadow-sm position-relative">            {/* Delete Button - appears on hover */}
+            <DeleteLessonBtn data-cy={`deleteLessonBtn${lesson.id}`} lessonId={lesson.id} setUpdatedLessons={setUpdatedLessons}/>
             <div className="card-body p-4">
               {/* Date Header */}
               <div className="d-flex align-items-center mb-3">

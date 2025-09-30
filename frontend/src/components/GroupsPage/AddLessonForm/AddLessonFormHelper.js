@@ -24,7 +24,6 @@ export const handleSubmit = async (e, groupId, formData, setFormData, setIsSubmi
     };
     
     const result = await newLesson(lessonData);
-    console.log(JSON.stringify(result));
     
     // Reset form after successful submission
     setFormData({ date: '' });

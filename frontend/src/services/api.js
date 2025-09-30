@@ -137,6 +137,14 @@ export async function newLesson(lessonData){
   }
 }
 
+export async function deleteLesson(id){
+  try {
+    return API.delete(`/api/lessons/${id}/`);
+  } catch (err) {
+    throw err;
+  }
+}
+
 // ----- Resource Services -----
 export async function newResources(resourcesData){
   try {

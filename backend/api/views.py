@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework import status
 
-from tutoring.models import Group, Resource
+from tutoring.models import Group, Lesson, Resource
 from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer, ResourceSerializer
 
 
@@ -43,6 +43,19 @@ class addLessons(APIView):
             sz.save()
             return Response(sz.data)
         return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class getEditDeleteLessons(APIView):
+    
+    def delete(self, request, pk):
+        try:
+            item = Lesson.objects.get(pk=pk)
+            item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Item not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class addResources(APIView):
     def post(self, request):

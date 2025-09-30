@@ -94,7 +94,8 @@ class BulkAddAttendancesTests(APITestCase):
         # 3. Create a Lesson under that Group
         self.lesson = Lesson.objects.create(
             group=self.group,
-            notes="Algebra intro"
+            notes="Algebra intro",
+            date='2024-01-15'
         )
 
         # 4. Create a Parent (basket auto-created by signal)
@@ -157,5 +158,65 @@ class BulkAddAttendancesTests(APITestCase):
             }
         ]
         response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)  # serializer errors returned
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)  # serializer errors returned
         self.assertIn("tutoringStudent", response.data[0])
+
+class DeleteLessons(APITestCase):
+    def setUp(self):
+        # 1. Create Stripe Product (required for Group.associated_product)
+        self.prod = StripeProd.objects.create(
+            stripeId="prod_test123",
+            defaultPriceId="price_test123",
+            name="Tutoring Product",
+            is_active=True
+        )
+
+        # 2. Create a Group
+        self.group = Group.objects.create(
+            lesson_length=1,
+            associated_product=self.prod,
+            tutor="Alice",
+            course=Group.CourseChoices.JUNIOR_MATHS,
+            day_of_week=Group.Weekday.MONDAY,
+            time_of_day="10:00:00"
+        )
+
+        # 3. Create a Lesson under that Group
+        self.lesson = Lesson.objects.create(
+            group=self.group,
+            notes="Algebra intro",
+            date='2024-01-15'
+        )
+
+        # 4. Create a Parent (basket auto-created by signal)
+        self.parent = Parent.objects.create(
+            name="Mr Smith",
+            stripeId="cus_test123"
+        )
+
+        # 5. Create TutoringStudent assigned to group + parent
+        self.student = TutoringStudent.objects.create(
+            name="John Doe",
+            parent=self.parent
+        )
+        self.student.group.add(self.group)
+
+        # 6. API URL
+        self.url = reverse("getEditDeleteLessons", kwargs={
+            'pk': self.lesson.pk
+        })
+
+    def testDeleteBasic(self):
+        response = self.client.delete(self.url, format="json")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Lesson.objects.filter(pk=self.lesson.pk).exists())
+
+    def testDeleteNotFound(self):
+        non_existent_pk = 99999
+        url = reverse("getEditDeleteLessons", kwargs={'pk': non_existent_pk})
+        
+        response = self.client.delete(url, format="json")
+        
+        self.assertEqual(response.status_code, 404)
+        
+        self.assertEqual(response.data['error'], 'Item not found')
