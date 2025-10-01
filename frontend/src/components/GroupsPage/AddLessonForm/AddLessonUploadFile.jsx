@@ -141,6 +141,7 @@ export const FileUploadField = ({
           accept={accept}
           onChange={handleFileSelect}
           disabled={disabled}
+          data-cy="file-input"
         />
 
         {/* Upload Icon */}
@@ -178,10 +179,11 @@ export const FileUploadField = ({
       {files.length > 0 && (
         <div className="mt-3">
           {files.map((file, index) => (
-            <div
+                          <div
               key={index}
               className="d-flex align-items-center justify-content-between p-3 mb-2 border rounded bg-light"
               style={{ transition: 'all 0.2s ease' }}
+              data-cy={`uploaded-file-${index}`}
             >
               <div className="d-flex align-items-center flex-grow-1 overflow-hidden">
                 {/* File Icon */}
@@ -219,6 +221,7 @@ export const FileUploadField = ({
                     handleRemoveFile(index);
                   }}
                   aria-label={`Remove ${file.name}`}
+                  data-cy={`remove-file-${index}`}
                 >
                   <svg 
                     width="16" 
@@ -240,3 +243,60 @@ export const FileUploadField = ({
     </div>
   );
 };
+
+// Demo usage
+export default function App() {
+  const [singleFile, setSingleFile] = useState([]);
+  const [multipleFiles, setMultipleFiles] = useState([]);
+  const [limitedFiles, setLimitedFiles] = useState([]);
+
+  return (
+    <div className="container py-5" style={{ maxWidth: '800px' }}>
+      <h1 className="mb-4">File Upload Component</h1>
+      
+      {/* Single File Upload */}
+      <FileUploadField
+        files={singleFile}
+        onChange={setSingleFile}
+        label="Single File Upload"
+        helperText="Upload one file"
+      />
+
+      {/* Multiple Files Upload */}
+      <FileUploadField
+        files={multipleFiles}
+        onChange={setMultipleFiles}
+        multiple={true}
+        label="Multiple Files Upload"
+        helperText="Upload as many files as you want"
+      />
+
+      {/* Limited Multiple Files */}
+      <FileUploadField
+        files={limitedFiles}
+        onChange={setLimitedFiles}
+        multiple={true}
+        maxFiles={3}
+        label="Limited Upload (Max 3 files)"
+        helperText="You can upload up to 3 files"
+      />
+
+      {/* Example with error state */}
+      <FileUploadField
+        files={[]}
+        onChange={() => {}}
+        label="Upload with Error"
+        error="This field is required"
+      />
+
+      {/* Example disabled */}
+      <FileUploadField
+        files={[]}
+        onChange={() => {}}
+        label="Disabled Upload"
+        disabled={true}
+        helperText="This field is disabled"
+      />
+    </div>
+  );
+}
