@@ -21,27 +21,30 @@ export const handleSubmit = async (e, groupId, formData, setFormData, setIsSubmi
     const lessonData = {
       group: groupId,
       date: formData.date,
-      files: formData.multipleFiles
+      resources: []
     };
 
-    // send FormData
     const resultNewLesson = await newLesson(lessonData);
     
-
-    formData.multipleFiles.forEach((file, idx) => {
+    const uploadPromises = formData.multipleFiles.map((file) => {
       const bulkFormData = new FormData();
-      bulkFormData.append(`file`, file);
-      bulkFormData.append(`lesson`, resultNewLesson.data.id);
-      bulkFormData.append(`name`, file.name);
-      newResources(bulkFormData);
+      bulkFormData.append('file', file);
+      bulkFormData.append('lesson', resultNewLesson.data.id);
+      bulkFormData.append('name', file.name);
+      return newResources(bulkFormData);
     });
 
+    const results = await Promise.all(uploadPromises);
     
-    // Reset form after successful submission
+    lessonData.resources = results.map(result => result.data);
+    
     setFormData({ 
       date: '',
       files: []
-     });
+    });
+
+    console.log(lessonData.resources);
+
     setUpdatedLessons(prev => [...prev, lessonData]);
   } catch (error) {
     console.error('Error creating lesson:', error);

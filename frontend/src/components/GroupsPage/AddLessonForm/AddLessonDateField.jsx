@@ -12,7 +12,7 @@ export default function AddLessonDateField({
         id="lesson-date"
         type="datetime-local"
         className="form-control"
-        value={formData.date}
+        value={formData.date ? "Select" : formData.date}
         onChange={(e) => handleInputChange('date', e.target.value, setFormData)}
         data-cy="newLessonFormDateInput"
         required
