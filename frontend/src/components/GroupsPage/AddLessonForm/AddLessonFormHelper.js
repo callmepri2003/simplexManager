@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { newLesson } from "../../../services/api";
+import { newLesson, newResources } from "../../../services/api";
 
 
 export const handleInputChange = (field, value, setFormData) => {
@@ -20,13 +20,28 @@ export const handleSubmit = async (e, groupId, formData, setFormData, setIsSubmi
   try {
     const lessonData = {
       group: groupId,
-      date: formData.date
+      date: formData.date,
+      files: formData.multipleFiles
     };
+
+    // send FormData
+    const resultNewLesson = await newLesson(lessonData);
     
-    const result = await newLesson(lessonData);
+
+    formData.multipleFiles.forEach((file, idx) => {
+      const bulkFormData = new FormData();
+      bulkFormData.append(`file`, file);
+      bulkFormData.append(`lesson`, resultNewLesson.data.id);
+      bulkFormData.append(`name`, file.name);
+      newResources(bulkFormData);
+    });
+
     
     // Reset form after successful submission
-    setFormData({ date: '' });
+    setFormData({ 
+      date: '',
+      files: []
+     });
     setUpdatedLessons(prev => [...prev, lessonData]);
   } catch (error) {
     console.error('Error creating lesson:', error);
@@ -34,10 +49,3 @@ export const handleSubmit = async (e, groupId, formData, setFormData, setIsSubmi
     setIsSubmitting(false);
   }
 };
-
-export const setMultipleFiles = (multipleFiles) => {
-  setFormData(prev => ({
-    ...prev,
-    multipleFiles
-  }));
-}

@@ -146,9 +146,11 @@ export async function deleteLesson(id){
 }
 
 // ----- Resource Services -----
-export async function newResources(resourcesData){
+export async function newResources(resourceData){
   try {
-    return API.post('/api/resources/bulk/', resourcesData);
+    return API.post('/api/resources/', resourceData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
   } catch (err) {
     throw err;
   }

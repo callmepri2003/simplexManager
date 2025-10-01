@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Loading from "../../Loading";
-import {handleInputChange, handleSubmit, setMultipleFiles} from './AddLessonFormHelper'
+import {handleInputChange, handleSubmit} from './AddLessonFormHelper'
 import AddLessonDateField from "./AddLessonDateField";
 import { FileUploadField } from "./AddLessonUploadFile";
 
@@ -9,6 +9,13 @@ export default function AddLessonForm({ groupId, onCancel, setUpdatedLessons }) 
     date: '',
     multipleFiles: []
   });
+
+  const setMultipleFiles = (multipleFiles) => {
+    setFormData(prev => ({
+      ...prev,
+      multipleFiles
+    }));
+  }
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,7 +34,14 @@ export default function AddLessonForm({ groupId, onCancel, setUpdatedLessons }) 
           <h5 className="mb-0 fw-medium">Add New Lesson</h5>
         </div>
 
-        <form onSubmit={(e)=>{handleSubmit(e, groupId, formData, setFormData, setIsSubmitting, setUpdatedLessons)}}>
+        <form onSubmit={(e)=>{handleSubmit(
+          e, 
+          groupId, 
+          formData, 
+          setFormData, 
+          setIsSubmitting, 
+          setUpdatedLessons
+          )}}>
           <AddLessonDateField 
             formData={formData} 
             handleInputChange={handleInputChange}
