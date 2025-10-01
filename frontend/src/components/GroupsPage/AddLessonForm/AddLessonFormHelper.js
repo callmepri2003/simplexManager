@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { newLesson } from "../../../services/api";
+import { newLesson, newResources } from "../../../services/api";
 
 
 export const handleInputChange = (field, value, setFormData) => {
@@ -20,13 +20,31 @@ export const handleSubmit = async (e, groupId, formData, setFormData, setIsSubmi
   try {
     const lessonData = {
       group: groupId,
-      date: formData.date
+      date: formData.date,
+      resources: []
     };
+
+    const resultNewLesson = await newLesson(lessonData);
     
-    const result = await newLesson(lessonData);
+    const uploadPromises = formData.multipleFiles.map((file) => {
+      const bulkFormData = new FormData();
+      bulkFormData.append('file', file);
+      bulkFormData.append('lesson', resultNewLesson.data.id);
+      bulkFormData.append('name', file.name);
+      return newResources(bulkFormData);
+    });
+
+    const results = await Promise.all(uploadPromises);
     
-    // Reset form after successful submission
-    setFormData({ date: '' });
+    lessonData.resources = results.map(result => result.data);
+    
+    setFormData({ 
+      date: '',
+      files: []
+    });
+
+    console.log(lessonData.resources);
+
     setUpdatedLessons(prev => [...prev, lessonData]);
   } catch (error) {
     console.error('Error creating lesson:', error);

@@ -11,6 +11,8 @@ from rest_framework import status
 
 from tutoring.models import Group, Lesson, Resource
 from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer, ResourceSerializer
+from django.db import IntegrityError
+from rest_framework.exceptions import ValidationError
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -45,7 +47,7 @@ class addLessons(APIView):
         return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class getEditDeleteLessons(APIView):
-    
+
     def delete(self, request, pk):
         try:
             item = Lesson.objects.get(pk=pk)
@@ -56,12 +58,19 @@ class getEditDeleteLessons(APIView):
                 {'error': 'Item not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
-
-class addResources(APIView):
+    
+class addResource(APIView):
     def post(self, request):
         sz = ResourceSerializer(data=request.data)
+
         if sz.is_valid():
-            print(sz)
-            sz.save()
-            return Response(sz.data)
-        return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+
+                sz.save()
+                return Response(sz.data, status=status.HTTP_201_CREATED)
+
+            except (IntegrityError, ValidationError) as e:
+                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)

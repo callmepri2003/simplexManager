@@ -28,6 +28,7 @@ export default function LessonsSection({ groupId, lessons }) {
     });
   };
 
+
   return (
     <div>
       <h2 className="fw-semibold mb-4">Lessons</h2>

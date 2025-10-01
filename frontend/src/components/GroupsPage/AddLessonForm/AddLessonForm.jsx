@@ -1,12 +1,21 @@
 import { useState } from "react";
 import Loading from "../../Loading";
 import {handleInputChange, handleSubmit} from './AddLessonFormHelper'
+import AddLessonDateField from "./AddLessonDateField";
+import { FileUploadField } from "./AddLessonUploadFile";
 
 export default function AddLessonForm({ groupId, onCancel, setUpdatedLessons }) {
-
   const [formData, setFormData] = useState({
-    date: ''
+    date: '',
+    multipleFiles: []
   });
+
+  const setMultipleFiles = (multipleFiles) => {
+    setFormData(prev => ({
+      ...prev,
+      multipleFiles
+    }));
+  }
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -25,22 +34,27 @@ export default function AddLessonForm({ groupId, onCancel, setUpdatedLessons }) 
           <h5 className="mb-0 fw-medium">Add New Lesson</h5>
         </div>
 
-        <form onSubmit={(e)=>{handleSubmit(e, groupId, formData, setFormData, setIsSubmitting, setUpdatedLessons)}}>
-          {/* Date Field */}
-          <div className="mb-3">
-            <label htmlFor="lesson-date" className="form-label fw-medium text-muted">
-              Lesson Date
-            </label>
-            <input
-              id="lesson-date"
-              type="datetime-local"
-              className="form-control"
-              value={formData.date}
-              onChange={(e) => handleInputChange('date', e.target.value, setFormData)}
-              data-cy="newLessonFormDateInput"
-              required
-            />
-          </div>
+        <form onSubmit={(e)=>{handleSubmit(
+          e, 
+          groupId, 
+          formData, 
+          setFormData, 
+          setIsSubmitting, 
+          setUpdatedLessons
+          )}}>
+          <AddLessonDateField 
+            formData={formData} 
+            handleInputChange={handleInputChange}
+            setFormData={setFormData}
+          />
+          {/* Multiple Files Upload */}
+          <FileUploadField
+            files={formData.multipleFiles}
+            onChange={setMultipleFiles}
+            multiple={true}
+            label="Multiple Files Upload"
+            helperText="Upload as many files as you want"
+          />
 
           {/* Form Actions */}
           <div className="d-flex gap-2 justify-content-end">

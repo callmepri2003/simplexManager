@@ -3,9 +3,10 @@ import json
 from pathlib import Path
 from rest_framework.test import APITestCase
 from stripeInt.models import StripeProd
-from tutoring.models import Group, Lesson, Parent, TutoringStudent
+from tutoring.models import Group, Lesson, Parent, Resource, TutoringStudent
 from rest_framework import status
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 def strip_ids(obj):
     """
@@ -220,3 +221,31 @@ class DeleteLessons(APITestCase):
         self.assertEqual(response.status_code, 404)
         
         self.assertEqual(response.data['error'], 'Item not found')
+
+class AddResourceTestCase(APITestCase):
+    def setUp(self):
+        self.group = Group.objects.create(tutor="Test Tutor")
+        self.lesson = Lesson.objects.create(
+            group=self.group,
+            date="2025-10-01T10:00:00Z"
+        )
+        self.url = reverse('addResource')
+    
+    def test_add_resource_success(self):
+        file = SimpleUploadedFile("test.pdf", b"file content", content_type="application/pdf")
+        data = {
+            'file': file,
+            'lesson': self.lesson.id,
+            'name': 'test.pdf'
+        }
+        response = self.client.post(self.url, data, format='multipart')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Resource.objects.count(), 1)
+        self.assertEqual(Resource.objects.first().name, 'test.pdf')
+    
+    def test_add_resource_invalid_data(self):
+        data = {'name': 'test.pdf'}  # Missing required fields
+        response = self.client.post(self.url, data)
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
