@@ -34,3 +34,10 @@ export const handleSubmit = async (e, groupId, formData, setFormData, setIsSubmi
     setIsSubmitting(false);
   }
 };
+
+export const setMultipleFiles = (multipleFiles) => {
+  setFormData(prev => ({
+    ...prev,
+    multipleFiles
+  }));
+}
