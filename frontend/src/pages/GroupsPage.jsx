@@ -7,7 +7,8 @@ export default function GroupsPage() {
 
   const [groups, loading, error] = useGetAllGroups();
 
-  if (error) return <p>Error: {JSON.stringify(error)}</p>;
+  console.log(error);
+  console.log(loading);
   
   return (
     <>
