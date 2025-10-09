@@ -34,49 +34,65 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // queue the request until refresh finishes
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return API(originalRequest);
-        });
-      }
+    // Don't intercept refresh token requests to avoid infinite loops
+    if (originalRequest.url?.includes('/api/token/refresh/')) {
+      localStorage.removeItem("authTokens");
+      console.log('Refresh token expired - clearing auth');
+      // Optionally redirect to login
+      // window.location.href = '/login';
+      return Promise.reject(error);
+    }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+    // Only handle 401 errors once per request
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
 
+    // Queue requests while refresh is in progress
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return API(originalRequest);
+      });
+    }
+
+    // Start token refresh process
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
       const tokens = JSON.parse(localStorage.getItem("authTokens") || "{}");
 
       if (!tokens?.refresh) {
-        isRefreshing = false;
-        return Promise.reject(error);
+        throw new Error("No refresh token available");
       }
 
-      try {
-        const { data } = await API.post("/api/token/refresh/", {
-          refresh: tokens.refresh,
-        });
+      const { data } = await API.post("/api/token/refresh/", {
+        refresh: tokens.refresh,
+      });
 
-        const newTokens = { ...tokens, access: data.access };
-        localStorage.setItem("authTokens", JSON.stringify(newTokens));
+      // Update tokens
+      const newTokens = { ...tokens, access: data.access };
+      localStorage.setItem("authTokens", JSON.stringify(newTokens));
+      API.defaults.headers.Authorization = `Bearer ${data.access}`;
 
-        API.defaults.headers.Authorization = `Bearer ${data.access}`;
-
-        processQueue(null, data.access);
-
-        return API(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
-        return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
-      }
+      // Retry queued requests
+      processQueue(null, data.access);
+      console.log('Token refreshed successfully');
+      return API(originalRequest);
+    } catch (err) {
+      // Clear auth tokens on refresh failure
+      localStorage.removeItem("authTokens");
+      processQueue(err, null);
+      console.log('Token refresh failed - user logged out');
+      // Optionally redirect to login
+      // window.location.href = '/login';
+      return Promise.reject(err);
+    } finally {
+      isRefreshing = false;
     }
-
-    return Promise.reject(error);
   }
 );
 
@@ -134,6 +150,23 @@ export async function postBulkAttendances(attendanceData) {
   } catch (err) {
     throw err; // let caller handle error
   }
+}
+
+export async function getAttendance(lessonId){
+  console.log('Fetching attendance for lesson '+ lessonId);
+  return []
+}
+
+export async function updateAttendance (lessonId, studentId, attendanceData) {
+  // TODO: Replace with actual API call
+  // const response = await fetch(`/api/lessons/${lessonId}/attendance/${studentId}`, {
+  //   method: 'PATCH',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify(attendanceData)
+  // });
+  // return await response.json();
+  console.log('Updating attendance:', { lessonId, studentId, attendanceData });
+  return { success: true };
 }
 
 // ----- Lesson Services -----

@@ -91,7 +91,10 @@ class Attendance(models.Model):
   lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
   tutoringStudent = models.ForeignKey("TutoringStudent", on_delete=models.DO_NOTHING, related_name='lessons_attended')
   homework = models.BooleanField(default=False)
+#   present = models.BooleanField(default=False)
   paid = models.BooleanField(default=False)
+
+
 
 class Basket(models.Model):
   None
