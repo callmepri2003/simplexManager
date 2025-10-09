@@ -152,22 +152,16 @@ export async function postBulkAttendances(attendanceData) {
   }
 }
 
-export async function getAttendance(lessonId){
-  console.log('Fetching attendance for lesson '+ lessonId);
-  return []
+// PUT (Edit single attendance)
+export async function editAttendance(id, attendanceData) {
+  try {
+    const res = await API.put(`/api/attendances/${id}/`, attendanceData);
+    return res.data;
+  } catch (err) {
+    throw err;
+  }
 }
 
-export async function updateAttendance (lessonId, studentId, attendanceData) {
-  // TODO: Replace with actual API call
-  // const response = await fetch(`/api/lessons/${lessonId}/attendance/${studentId}`, {
-  //   method: 'PATCH',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(attendanceData)
-  // });
-  // return await response.json();
-  console.log('Updating attendance:', { lessonId, studentId, attendanceData });
-  return { success: true };
-}
 
 // ----- Lesson Services -----
 export async function newLesson(lessonData){

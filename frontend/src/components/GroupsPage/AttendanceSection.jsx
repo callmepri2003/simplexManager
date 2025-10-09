@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { postBulkAttendances } from "../../services/api";
+import { editAttendance, postBulkAttendances } from "../../services/api";
 
 export default function AttendanceSection({ lesson, students }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -49,14 +49,24 @@ export default function AttendanceSection({ lesson, students }) {
   const handleBulkSave = async () => {
     setIsSaving(true);
     try {
-      const records = Object.entries(attendance).map(([studentId, data]) => ({
-        studentId: parseInt(studentId),
-        present: data.present,
-        paid: data.paid,
-        homework: data.homework
-      }));
-      await postBulkAttendances(lessonId, records);
-      // Optionally show success message
+      const updatePromises = Object.entries(attendance).map(([studentId, data]) => {
+        const attendanceData = {
+          lesson: lessonId,
+          tutoringStudent: parseInt(studentId),
+          present: data.present,
+          paid: data.paid,
+          homework: data.homework
+        };
+        
+        // Edit existing attendance record
+        if (data.id) {
+          return editAttendance(data.id, attendanceData);
+        }
+        // Skip if no ID (shouldn't happen in this flow)
+        return Promise.resolve();
+      });
+      
+      await Promise.all(updatePromises);
       console.log('Attendance saved successfully');
     } catch (error) {
       console.error('Error saving attendance:', error);
