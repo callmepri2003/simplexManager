@@ -73,6 +73,24 @@ class Lesson(models.Model):
     def __str__(self):
         return f"Lesson {self.id} - {self.notes or 'No notes'}"
 
+@receiver(post_save, sender=Lesson)
+def create_lesson_attendances(sender, instance, created, **kwargs):
+    """
+    Creates attendance records for all students in the group when a lesson is created.
+    """
+    if created:
+        
+        students = instance.group.tutoringStudents.all()
+        
+        for student in students:
+            Attendance.objects.create(
+                lesson=instance,
+                tutoringStudent=student,
+                present=False,
+                homework=False,
+                paid=False
+            )
+
 
 class Resource(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="resources")
@@ -91,7 +109,7 @@ class Attendance(models.Model):
   lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
   tutoringStudent = models.ForeignKey("TutoringStudent", on_delete=models.DO_NOTHING, related_name='lessons_attended')
   homework = models.BooleanField(default=False)
-#   present = models.BooleanField(default=False)
+  present = models.BooleanField(default=False)
   paid = models.BooleanField(default=False)
 
 
@@ -137,3 +155,6 @@ class TutoringStudent(models.Model):
   name = models.CharField(max_length=100)
   group = models.ManyToManyField(Group, related_name='tutoringStudents')
   parent = models.ForeignKey(Parent, on_delete=models.CASCADE, related_name='children')
+
+  def __str__(self):
+      return self.name

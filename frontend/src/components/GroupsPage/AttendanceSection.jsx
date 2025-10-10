@@ -1,23 +1,23 @@
 import { useState } from "react";
-import { editAttendance, postBulkAttendances } from "../../services/api";
+import { editAttendance } from "../../services/api";
 
 export default function AttendanceSection({ lesson, students }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [attendance, setAttendance] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null); // { type: 'success' | 'error', text: string }
   const lessonId = lesson.id;
   
   const handleMarkRoll = async () => {
     if (!isExpanded) {
       setIsLoading(true);
+      setSaveMessage(null); // Clear any previous messages
       try {
-        // Use attendance data from lesson prop
         const existingAttendance = lesson.attendances || [];
         
         const attendanceMap = {};
         students.forEach(student => {
-          // Match by tutoringStudent field instead of studentId
           const existing = existingAttendance.find(a => a.tutoringStudent === student.id);
           attendanceMap[student.id] = {
             id: existing?.id,
@@ -37,6 +37,7 @@ export default function AttendanceSection({ lesson, students }) {
   };
 
   const toggleAttendanceField = (studentId, field) => {
+    setSaveMessage(null); // Clear message when making changes
     setAttendance(prev => ({
       ...prev,
       [studentId]: {
@@ -48,6 +49,7 @@ export default function AttendanceSection({ lesson, students }) {
 
   const handleBulkSave = async () => {
     setIsSaving(true);
+    setSaveMessage(null);
     try {
       const updatePromises = Object.entries(attendance).map(([studentId, data]) => {
         const attendanceData = {
@@ -58,26 +60,26 @@ export default function AttendanceSection({ lesson, students }) {
           homework: data.homework
         };
         
-        // Edit existing attendance record
         if (data.id) {
           return editAttendance(data.id, attendanceData);
         }
-        // Skip if no ID (shouldn't happen in this flow)
         return Promise.resolve();
       });
       
       await Promise.all(updatePromises);
-      console.log('Attendance saved successfully');
+      setSaveMessage({ type: 'success', text: 'Attendance saved successfully!' });
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
       console.error('Error saving attendance:', error);
-      // Optionally show error message to user
+      setSaveMessage({ type: 'error', text: 'Failed to save attendance. Please try again.' });
     } finally {
       setIsSaving(false);
     }
   };
 
   const getAttendanceSummary = () => {
-    // Use lesson.attendances for summary when collapsed
     const attendanceData = isExpanded ? attendance : {};
     
     if (!isExpanded && lesson.attendances) {
@@ -192,6 +194,18 @@ export default function AttendanceSection({ lesson, students }) {
           {/* Expanded attendance list */}
           {hasStudents && isExpanded && (
             <div className="mt-2" data-cy={`attendance-list-${lessonId}`}>
+              {/* Success/Error Message */}
+              {saveMessage && (
+                <div 
+                  className={`alert ${saveMessage.type === 'success' ? 'alert-success' : 'alert-danger'} d-flex align-items-center mb-3`}
+                  role="alert"
+                  data-cy={`save-message-${lessonId}`}
+                >
+                  <i className={`bi ${saveMessage.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-2`}></i>
+                  {saveMessage.text}
+                </div>
+              )}
+
               {/* Quick actions */}
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <button

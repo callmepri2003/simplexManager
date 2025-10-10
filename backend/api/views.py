@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework import status
 
-from tutoring.models import Group, Lesson, Resource
+from tutoring.models import Attendance, Group, Lesson, Resource
 from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer, ResourceSerializer
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
@@ -37,6 +37,24 @@ class bulkAddAttendances(APIView):
             sz.save()
             return Response(sz.data)
         return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class editAttendance(APIView):
+    def put(self, request, id):
+        try:
+            attendance = Attendance.objects.get(id=id)
+        except Attendance.DoesNotExist:
+            return Response(
+                {"error": "Attendance record not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        sz = AttendanceSerializer(attendance, data=request.data)
+        if sz.is_valid():
+            sz.save()
+            return Response(sz.data, status=status.HTTP_200_OK)
+        
+        return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 class addLessons(APIView):
     def post(self, request):

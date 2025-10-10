@@ -31,7 +31,7 @@ import GroupsPage from '../../pages/GroupsPage';
 import ClassIcon from '@mui/icons-material/Class';
 import GroupsExplorePage from '../../pages/GroupsExplorePage';
 import EmptyPage from './EmptyPage';
-import DashboardPage from '../../pages/DashboardPage/DashboardPage';
+import DashboardPage from '../../pages/DashboardPage';
 
 const drawerWidth = 240;
 
