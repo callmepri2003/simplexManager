@@ -4,11 +4,14 @@ import { useGetGroup } from "../../services/api";
 import { formatDayAndTime } from "../../utils/helper";
 import AddLessonForm from "./AddLessonForm/AddLessonForm";
 import DeleteLessonBtn from "./DeleteBtn";
+import AttendanceSection from "./AttendanceSection";
 
 // Lessons Component
-export default function LessonsSection({ groupId, lessons }) {
+export default function LessonsSection({ id, group }) {
+  const groupId = id;
+  const lessons = group.lessons;
+  const students = group.tutoringStudents;
   const [updatedLessons, setUpdatedLessons] = useState(lessons);
-
   if (!updatedLessons || updatedLessons.length === 0) {
     return (
       <div className="text-center text-muted py-4">
@@ -27,7 +30,6 @@ export default function LessonsSection({ groupId, lessons }) {
       day: 'numeric'
     });
   };
-
 
   return (
     <div>
@@ -90,6 +92,13 @@ export default function LessonsSection({ groupId, lessons }) {
                   </div>
                 </div>
               )}
+
+              {/* Attendance Section */}
+              <AttendanceSection 
+                lesson={lesson}
+                students={students || []}
+              />
+
 
               {/* Empty state when no notes or resources */}
               {(!lesson.notes || !lesson.notes.trim()) && (!lesson.resources || lesson.resources.length === 0) && (

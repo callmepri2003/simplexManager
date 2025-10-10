@@ -18,7 +18,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { Link, Routes, Route } from "react-router-dom";
 import CalendarPage from '../../pages/CalendarPage';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { SignInPage } from '@toolpad/core/SignInPage';
 import LoginPage from '../../pages/LoginPage';
@@ -31,6 +31,7 @@ import GroupsPage from '../../pages/GroupsPage';
 import ClassIcon from '@mui/icons-material/Class';
 import GroupsExplorePage from '../../pages/GroupsExplorePage';
 import EmptyPage from './EmptyPage';
+import DashboardPage from '../../pages/DashboardPage';
 
 const drawerWidth = 240;
 
@@ -75,6 +76,14 @@ function ResponsiveDrawer(props) {
       </Box>
       <Divider />
       <List>
+        <ListItem component={Link} to={"/dashboard"} key={"Dashboard"} disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+                <DashboardIcon/>
+              </ListItemIcon>
+              <ListItemText primary={"Dashboard"} />
+            </ListItemButton>
+        </ListItem>
         <ListItem component={Link} to={"/groups"} key={"Groups"} disablePadding>
             <ListItemButton>
               <ListItemIcon>
@@ -83,14 +92,6 @@ function ResponsiveDrawer(props) {
               <ListItemText primary={"Groups"} />
             </ListItemButton>
           </ListItem>
-        {/* <ListItem component={Link} to={"/calendar"} key={"Calendar"} disablePadding>
-            <ListItemButton>
-              <ListItemIcon>
-                <CalendarMonthIcon/>
-              </ListItemIcon>
-              <ListItemText primary={"Calendar"} />
-            </ListItemButton>
-          </ListItem> */}
       </List>
       <Divider />
       <List>
@@ -168,7 +169,16 @@ function ResponsiveDrawer(props) {
       </Box>
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}
+        sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          backgroundImage: 'url(bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          minHeight: '100vh'
+        }}
       >
         <Toolbar />
         <Routes>
@@ -177,6 +187,13 @@ function ResponsiveDrawer(props) {
               <LoginPage/>
             </UnauthenticatedRoute>
             } />
+          <Route path="/dashboard" element={
+            <AuthenticatedRoute>
+              <AdminRoute>
+                <DashboardPage/>
+              </AdminRoute>  
+            </AuthenticatedRoute>
+          } />
           <Route path="/groups" element={
           <AuthenticatedRoute>
             <AdminRoute>

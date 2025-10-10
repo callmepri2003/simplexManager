@@ -26,10 +26,15 @@ class ResourceInline(admin.TabularInline):
     model = Resource
     extra = 1  # show one empty row for quick add
 
+class AttendanceInline(admin.TabularInline):
+    model = Attendance
+    extra = 0  # don't show empty rows since attendances are auto-created
+    fields = ['tutoringStudent', 'present', 'homework', 'paid']
+
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ["group", "notes"]
-    inlines = [ResourceInline]
+    list_display = ["group", "notes", "date"]
+    inlines = [ResourceInline, AttendanceInline]
 
 
 admin.site.register(Basket, BasketAdmin)

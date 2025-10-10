@@ -63,7 +63,7 @@ export default function LoginPage() {
       
       if (res.status === 200) {
         localStorage.setItem("authTokens", JSON.stringify(res.data));
-        navigate('/')
+        navigate('/dashboard');
       }
       
     } catch (err) {

@@ -19,6 +19,7 @@ export default function GroupsCard(props) {
   const {
     id,
     lesson_length,
+    highlighted = false,
     associated_product,
     tutor,
     course,
@@ -42,12 +43,14 @@ export default function GroupsCard(props) {
       sx={{ 
         width: "100%",
         borderRadius: 2,
-        boxShadow: 2,
+        boxShadow: highlighted ? '0 0 20px rgba(25, 118, 210, 0.4)' : 2,
+        border: highlighted ? '1px solid rgba(25, 118, 210, 0.5)' : 'none',
         '&:hover': {
-          boxShadow: 4,
           transform: 'translateY(-2px)',
-          transition: 'all 0.3s ease-in-out'
-        }
+          transition: 'all 0.3s ease-in-out',
+          boxShadow: highlighted ? '0 0 25px rgba(25, 118, 210, 0.5)' : 4,
+        },
+        transition: 'all 0.3s ease-in-out'
       }}
     >
       <CardMedia

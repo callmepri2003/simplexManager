@@ -1,0 +1,8 @@
+{
+  "id": 1,
+  "lesson": 1,
+  "tutoringStudent": 101,
+  "present": true,
+  "paid": true,
+  "homework": true
+}
