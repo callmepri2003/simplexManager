@@ -263,6 +263,7 @@ class ServicesTest(StaticLiveServerTestCase):
             email = email2,
         )
 
+
         time.sleep(2)
 
         self.assertEqual(len(Parent.objects.all()), 2)
@@ -270,6 +271,19 @@ class ServicesTest(StaticLiveServerTestCase):
 
         product1 = stripe.Product.create(
             name=product_name1,
+        )
+
+        # Create a student
+        student1 = TutoringStudent.objects.create(
+            name=uniquify("Test Student1"),
+            parent=Parent.objects.get(name=name1),
+            active=True
+        )
+
+        student2 = TutoringStudent.objects.create(
+            name=uniquify("Test Student2"),
+            parent=Parent.objects.get(name=name2),
+            active=True
         )
         
         time.sleep(3)
@@ -284,6 +298,20 @@ class ServicesTest(StaticLiveServerTestCase):
 
         self.assertEqual(len(Parent.objects.all()), 2)
         self.assertEqual(len(StripeProd.objects.all()), 1)
+
+        product1 = StripeProd.objects.get(name=product_name1)
+
+        group = Group.objects.create(
+            tutor="Test Tutor",
+            course=Group.CourseChoices.YEAR11_ADV,
+            day_of_week=Group.Weekday.MONDAY,
+            time_of_day="14:00:00",
+            lesson_length=1,  # 1 hour lessons
+            associated_product=product1
+        )
+
+        student1.group.add(group)
+        student2.group.add(group)
 
         parent1 = Parent.objects.get(name=name1)
         parent2 = Parent.objects.get(name=name2)
@@ -311,15 +339,15 @@ class ServicesTest(StaticLiveServerTestCase):
                         parent1Found = True
                         line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                         self.assertEqual(len(line_items), 1)
-                        self.assertEqual(line_items[0]['amount'], 6000 * 2 * 2)  # 60 dollars for 2 hours for 2 weeks
-                        self.assertEqual(line_items[0]['quantity'], 4)
+                        self.assertEqual(line_items[0]['amount'], 6000 * 1 * 2)  # 60 dollars for 2 hours for 2 weeks
+                        self.assertEqual(line_items[0]['quantity'], 2)
 
                     elif parent2.stripeId == invoice['customer']:
                         parent2Found = True
                         line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                         self.assertEqual(len(line_items), 1)
-                        self.assertEqual(line_items[0]['amount'], 6000 * 2 * 5)  # 60 dollars for 2 hours for 5 weeks
-                        self.assertEqual(line_items[0]['quantity'], 10)
+                        self.assertEqual(line_items[0]['amount'], 6000 * 1 * 5)  # 60 dollars for 2 hours for 5 weeks
+                        self.assertEqual(line_items[0]['quantity'], 5)
 
                     if parent1Found and parent2Found:
                         break

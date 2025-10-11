@@ -13,12 +13,14 @@ class SetTermCommandTest(TestCase):
             tutor="John",
             course=Group.CourseChoices.YEAR11_ADV,
             day_of_week=Group.Weekday.MONDAY,
+            lesson_length=1,
             time_of_day=time(14, 0)
         )
         self.wednesday_group = Group.objects.create(
             tutor="Sarah",
             course=Group.CourseChoices.YEAR12_EXT1,
             day_of_week=Group.Weekday.WEDNESDAY,
+            lesson_length=1,
             time_of_day=time(15, 30)
         )
     
