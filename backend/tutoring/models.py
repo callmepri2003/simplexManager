@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from decimal import Decimal
+import os
 from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd
@@ -19,6 +20,7 @@ class LocalInvoice(models.Model):
     def get_stripe_invoice(self):
         """Fetch the full invoice data from Stripe"""
         import stripe
+        stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
         return stripe.Invoice.retrieve(self.stripeInvoiceId)
     
     def is_paid(self):
@@ -158,6 +160,9 @@ class Parent(models.Model):
         choices=PAYMENT_FREQUENCY_CHOICES,
         default='half-termly',
     )
+
+    def __str__(self):
+        return self.name
 
 class TutoringStudent(models.Model):
   name = models.CharField(max_length=100)

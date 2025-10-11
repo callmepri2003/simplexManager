@@ -4,7 +4,7 @@ import stripe
 
 from tutoring.models import Parent
 
-from .models import StripeProd
+from stripeInt.models import StripeProd
 
 class WebHooksTest(TestCase):
   def setUp(self):

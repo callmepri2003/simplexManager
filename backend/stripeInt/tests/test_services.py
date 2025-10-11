@@ -15,7 +15,7 @@ import time
 from stripeInt.models import StripeProd
 from django.core.management import call_command
 from tutoring.models import Parent, TutoringStudent, Group, Lesson, Attendance, LocalInvoice
-from .services import generateInvoices
+from stripeInt.services import generateInvoices
 import stripe
 
 load_dotenv()

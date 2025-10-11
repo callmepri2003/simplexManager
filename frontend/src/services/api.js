@@ -162,6 +162,28 @@ export async function editAttendance(id, attendanceData) {
   }
 }
 
+export function useGetAllAttendances(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get('/api/attendances/')
+      .then(res => {
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching attendances:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+  }, [])
+  return [data, loading, error]
+}
+
 
 // ----- Lesson Services -----
 export async function newLesson(lessonData){

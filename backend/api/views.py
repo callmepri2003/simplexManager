@@ -55,6 +55,11 @@ class editAttendance(APIView):
         
         return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class getAllAttendances(APIView):
+    def get(self, request):
+        attendances = Attendance.objects.all()
+        sz = AttendanceSerializer(attendances, many=True)
+        return Response(sz.data)
     
 class addLessons(APIView):
     def post(self, request):
