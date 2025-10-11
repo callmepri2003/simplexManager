@@ -224,7 +224,7 @@ class DeleteLessons(APITestCase):
 
 class AddResourceTestCase(APITestCase):
     def setUp(self):
-        self.group = Group.objects.create(tutor="Test Tutor")
+        self.group = Group.objects.create(tutor="Test Tutor", lesson_length=1)
         self.lesson = Lesson.objects.create(
             group=self.group,
             date="2025-10-01T10:00:00Z"

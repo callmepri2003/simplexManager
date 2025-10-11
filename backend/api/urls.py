@@ -4,6 +4,7 @@ from rest_framework import routers
 
 from .views import ListOrCreateGroupView, MyTokenObtainPairView, editAttendance, getUpdateDeleteGroupView
 from .views import bulkAddAttendances, addLessons, getEditDeleteLessons, addResource
+from .views import getAllAttendances
 
 # Router
 router = routers.DefaultRouter()
@@ -13,6 +14,7 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('groups/', ListOrCreateGroupView.as_view(), name='listOrCreateGroupView'),
     path('groups/<int:id>/', getUpdateDeleteGroupView.as_view(), name='getUpdateDeleteGroupView'),
+    path('attendances/', getAllAttendances.as_view(), name='getAllAttendances'),
     path('attendances/bulk/', bulkAddAttendances.as_view(), name='bulkAddAttendances'),
     path('attendances/<int:id>/', editAttendance.as_view(), name='editAttendance'),
     path('lessons/', addLessons.as_view(), name='addLessons'),

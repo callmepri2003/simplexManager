@@ -10,7 +10,7 @@ import StudentEngagementChart from '../components/DashboardPage/StudentEngagemen
 import TopPerformers from '../components/DashboardPage/TopPerformers';
 import ComingSoonSplash from './DashboardComingSoon'
 export default function DashboardPage() {
-  return <ComingSoonSplash />;
+  // return <ComingSoonSplash />;
   const [selectedTerm, setSelectedTerm] = useState('2024-3');
 
   // Mock data - replace with real data later

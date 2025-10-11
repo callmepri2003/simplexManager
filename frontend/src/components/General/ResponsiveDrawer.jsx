@@ -32,7 +32,8 @@ import ClassIcon from '@mui/icons-material/Class';
 import GroupsExplorePage from '../../pages/GroupsExplorePage';
 import EmptyPage from './EmptyPage';
 import DashboardPage from '../../pages/DashboardPage';
-
+import AttendancePage from '../../pages/AttendancesPage';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 const drawerWidth = 240;
 
 function ResponsiveDrawer(props) {
@@ -90,6 +91,14 @@ function ResponsiveDrawer(props) {
                 <ClassIcon/>
               </ListItemIcon>
               <ListItemText primary={"Groups"} />
+            </ListItemButton>
+          </ListItem>
+          <ListItem component={Link} to={"/attendances"} key={"Attendances"} disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+                <HowToRegIcon/>
+              </ListItemIcon>
+              <ListItemText primary={"Attendances"} />
             </ListItemButton>
           </ListItem>
       </List>
@@ -191,6 +200,13 @@ function ResponsiveDrawer(props) {
             <AuthenticatedRoute>
               <AdminRoute>
                 <DashboardPage/>
+              </AdminRoute>  
+            </AuthenticatedRoute>
+          } />
+          <Route path="/attendances" element={
+            <AuthenticatedRoute>
+              <AdminRoute>
+                <AttendancePage/>
               </AdminRoute>  
             </AuthenticatedRoute>
           } />

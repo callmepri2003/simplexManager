@@ -1,9 +1,10 @@
-from tutoring.models import Parent, Basket
+from tutoring.models import Parent, LocalInvoice, Attendance, Lesson
 import stripe
 import os
 from dotenv import load_dotenv
 import logging
 from datetime import datetime, timedelta
+from django.db.models import Q
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ def generateHalfTermlyInvoices():
 def generateTermlyInvoices():
     generateInvoices(frequency="termly", amount_of_weeks=10)
 
-def generateInvoices(*, frequency, amount_of_weeks ):
+def generateInvoices(*, frequency, amount_of_weeks):
     logger.info(f"Starting {frequency} invoice generation")
     
     # Set up Stripe API key
@@ -31,30 +32,51 @@ def generateInvoices(*, frequency, amount_of_weeks ):
     
     logger.debug("Stripe API key loaded successfully")
     
-    # Get all parents with fortnightly payment frequency
-    parents = Parent.objects.filter(payment_frequency=frequency)
-    logger.info(f"Found {parents.count()} parents with {frequency} payment frequency")
+    # Calculate billing period
+    period_start = datetime.now()
+    period_end = period_start + timedelta(weeks=amount_of_weeks)
+    
+    logger.info(f"Billing period: {period_start.date()} to {period_end.date()}")
+    
+    # Get all parents with matching payment frequency
+    parents = Parent.objects.filter(payment_frequency=frequency, is_active=True)
+    logger.info(f"Found {parents.count()} active parents with {frequency} payment frequency")
     
     # Process each parent
     for parent in parents:
-        logger.debug(f"Processing parent ID: {parent.id}")
+        logger.debug(f"Processing parent: {parent.name} (ID: {parent.id})")
         
-        # Check if parent has a basket
-        if not parent.basket:
-            logger.warning(f"Parent {parent.id} has no basket, skipping")
+        # Get all children for this parent
+        children = parent.children.filter(active=True)
+        
+        if not children.exists():
+            logger.warning(f"Parent {parent.name} has no active children, skipping")
             continue
         
-        # Get all basket items for this parent
-        basket_items = parent.basket.items.all()
+        # Collect all attendances for all children in this billing period
+        all_attendances = []
         
-        # Skip if no items in basket
-        if not basket_items.exists():
-            logger.warning(f"Parent {parent.id} has no items in basket, skipping")
+        for child in children:
+            logger.debug(f"Processing child: {child.name} (ID: {child.id})")
+            
+            # Get attendances for this child in the billing period
+            attendances = Attendance.objects.filter(
+                tutoringStudent=child,
+                lesson__date__gte=period_start,
+                lesson__date__lt=period_end,
+                paid=False  # Only invoice unpaid attendances
+            ).select_related('lesson', 'lesson__group', 'lesson__group__associated_product')
+            
+            logger.debug(f"Found {attendances.count()} unpaid attendances for {child.name}")
+            all_attendances.extend(attendances)
+        
+        # Skip if no attendances to invoice
+        if not all_attendances:
+            logger.warning(f"No unpaid attendances found for parent {parent.name}, skipping")
             continue
         
         try:
-            # Create invoice items
-            # Then create the invoice (it will automatically include all pending invoice items)
+            # Create Stripe invoice
             invoice = stripe.Invoice.create(
                 customer=parent.stripeId,
                 auto_advance=True,
@@ -68,40 +90,87 @@ def generateInvoices(*, frequency, amount_of_weeks ):
                     {
                         "name": "Payment Frequency",
                         "value": frequency
-                    },
-                    {
-                        "name": "Hotel",
-                        "value": "Trivago"
                     }
                 ]
             )
-
-            for item in basket_items:
-                logger.debug(f"Creating invoice item for: {item.product} (quantity: {item.quantity})")
-
-                price_obj = stripe.Price.retrieve(item.product.defaultPriceId)
+            
+            logger.info(f"Created Stripe invoice {invoice.id} for parent {parent.name}")
+            
+            # Create LocalInvoice as a lightweight reference to Stripe invoice
+            local_invoice = LocalInvoice.objects.create(
+                stripeInvoiceId=invoice.id
+            )
+            
+            logger.debug(f"Created LocalInvoice {local_invoice.id} referencing Stripe invoice {invoice.id}")
+            
+            # Group attendances by product for invoice items
+            product_quantities = {}
+            attendance_list = []
+            
+            for attendance in all_attendances:
+                # Link attendance to local invoice
+                attendance.local_invoice = local_invoice
+                attendance_list.append(attendance)
                 
+                # Get the product from the group
+                product = attendance.lesson.group.associated_product
+                
+                if not product:
+                    logger.warning(f"Attendance {attendance.id} has no associated product, skipping")
+                    continue
+                
+                # Get lesson length for this group (product is priced per hour)
+                lesson_length = attendance.lesson.group.lesson_length
+                
+                # Count quantity per product (accounting for lesson length)
+                if product.id not in product_quantities:
+                    product_quantities[product.id] = {
+                        'product': product,
+                        'quantity': 0,
+                        'student_names': set()
+                    }
+                
+                product_quantities[product.id]['quantity'] += lesson_length
+                product_quantities[product.id]['student_names'].add(attendance.tutoringStudent.name)
+            
+            # Bulk update attendances with local_invoice reference
+            Attendance.objects.bulk_update(attendance_list, ['local_invoice'])
+            
+            # Create invoice items in Stripe
+            for product_data in product_quantities.values():
+                product = product_data['product']
+                quantity = product_data['quantity']
+                student_names = ', '.join(sorted(product_data['student_names']))
+                
+                logger.debug(f"Creating invoice item for: {product.name} (quantity: {quantity})")
+                
+                # Retrieve price from Stripe
+                price_obj = stripe.Price.retrieve(product.defaultPriceId)
+                
+                # Create invoice item
                 stripe.InvoiceItem.create(
                     customer=parent.stripeId,
                     unit_amount_decimal=price_obj.unit_amount,
                     currency=price_obj.currency,
-                    description=f"Product: {item.product.name}",
-                    quantity=item.quantity * amount_of_weeks,
+                    description=f"{product.name} - {student_names}",
+                    quantity=quantity,
                     invoice=invoice.id
                 )
             
+            # Finalize the invoice
+            finalized_invoice = stripe.Invoice.finalize_invoice(invoice.id)
             
-            
-            logger.info(f"Successfully created invoice {invoice.id} for parent {parent.id}")
+            logger.info(f"Successfully created and finalized invoice {invoice.id} for parent {parent.name} "
+                       f"with {len(all_attendances)} attendances totaling ${finalized_invoice.total / 100}")
             
         except stripe.error.StripeError as e:
-            logger.error(f"Failed to create invoice for parent {parent.id}: {str(e)}")
+            logger.error(f"Failed to create invoice for parent {parent.name}: {str(e)}")
             continue
         except Exception as e:
-            logger.error(f"Unexpected error creating invoice for parent {parent.id}: {str(e)}")
+            logger.error(f"Unexpected error creating invoice for parent {parent.name}: {str(e)}")
             continue
     
-    logger.info("Completed fortnightly invoice generation")
+    logger.info(f"Completed {frequency} invoice generation")
 
 def calculate_billing_period(amount_of_weeks):
     """

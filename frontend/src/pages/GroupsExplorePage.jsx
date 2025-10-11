@@ -11,7 +11,7 @@ export default function GroupsExplorePage() {
   const [ groupInformation, loading, error ] = useGetGroup(id);
 
   if (loading || !groupInformation ) return <Loading/>
-
+  console.log(groupInformation);
   return (
     <div className="container-fluid p-0">
       {/* Hero Section */}

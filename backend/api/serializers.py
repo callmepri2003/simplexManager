@@ -4,7 +4,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
 from stripeInt.models import StripeProd
-from tutoring.models import Attendance, Group, Lesson, Resource, TutoringStudent
+from tutoring.models import Attendance, Group, Lesson, LocalInvoice, Resource, TutoringStudent
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -28,7 +28,14 @@ class StripeProdSerializer(serializers.ModelSerializer):
         model = StripeProd
         fields = '__all__'
 
+class LocalInvoiceSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = LocalInvoice
+        fields = ['stripeInvoiceId', 'get_stripe_invoice']
+
 class AttendanceSerializer(serializers.ModelSerializer):
+    local_invoice = LocalInvoiceSerializer(read_only=True)
     class Meta:
         model = Attendance
         fields = '__all__'
@@ -38,7 +45,6 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = "__all__"
-
 
 class LessonSerializer(serializers.ModelSerializer):
     attendances = AttendanceSerializer(many=True, read_only=True)
