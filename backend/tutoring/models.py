@@ -1,10 +1,38 @@
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from django.db import models
 from django.dispatch import receiver
 from stripeInt.models import StripeProd
 from django.db.models.signals import post_save
 import base64
 
+class LocalInvoice(models.Model):
+    """
+    Lightweight local reference to a Stripe invoice.
+    All invoice data should be fetched from Stripe to avoid inconsistencies.
+    This model only stores the Stripe invoice ID and provides a link to attendances.
+    Use the attendances reverse relationship to see which attendances are on this invoice.
+    """
+    stripeInvoiceId = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def get_stripe_invoice(self):
+        """Fetch the full invoice data from Stripe"""
+        import stripe
+        return stripe.Invoice.retrieve(self.stripeInvoiceId)
+    
+    def is_paid(self):
+        """Check if the invoice is paid by fetching status from Stripe"""
+        invoice = self.get_stripe_invoice()
+        return invoice.status == 'paid'
+    
+    def get_status(self):
+        """Get the current status from Stripe"""
+        invoice = self.get_stripe_invoice()
+        return invoice.status
+    
+    def __str__(self):
+        return f"LocalInvoice {self.id} - Stripe: {self.stripeInvoiceId}"
 
 class Group(models.Model):
     class CourseChoices(models.TextChoices):
@@ -24,7 +52,8 @@ class Group(models.Model):
         SATURDAY = 5, "Saturday"
         SUNDAY = 6, "Sunday"
 
-    lesson_length = models.IntegerField(default=1)  # In hours
+    lesson_length = models.IntegerField()
+
     associated_product = models.ForeignKey(
         StripeProd,
         on_delete=models.CASCADE,
@@ -106,21 +135,12 @@ class Resource(models.Model):
         return result
 
 class Attendance(models.Model):
-  lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
-  tutoringStudent = models.ForeignKey("TutoringStudent", on_delete=models.DO_NOTHING, related_name='lessons_attended')
-  homework = models.BooleanField(default=False)
-  present = models.BooleanField(default=False)
-  paid = models.BooleanField(default=False)
-
-
-
-class Basket(models.Model):
-  None
-
-class BasketItem(models.Model):
-  basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name='items')
-  product = models.ForeignKey(StripeProd, on_delete=models.CASCADE, related_name="basketItems")
-  quantity = models.IntegerField()
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
+    tutoringStudent = models.ForeignKey("TutoringStudent", on_delete=models.DO_NOTHING, related_name='lessons_attended')
+    homework = models.BooleanField(default=False)
+    present = models.BooleanField(default=False)
+    paid = models.BooleanField(default=False)
+    local_invoice = models.ForeignKey(LocalInvoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='attendances')
 
 class Parent(models.Model):
     PAYMENT_FREQUENCY_CHOICES = [
@@ -132,24 +152,12 @@ class Parent(models.Model):
 
     name = models.CharField(max_length=100)
     stripeId = models.CharField(max_length=100)
-    basket = models.OneToOneField('Basket', on_delete=models.DO_NOTHING, null=True)
     is_active = models.BooleanField(default=True)
     payment_frequency = models.CharField(
         max_length=20,
         choices=PAYMENT_FREQUENCY_CHOICES,
         default='half-termly',
     )
-      
-
-@receiver(post_save, sender=Parent)
-def create_parent_basket(sender, instance, created, **kwargs):
-    """
-    Creates an empty basket for a parent when the parent is first created.
-    """
-    if created and not instance.basket:
-        basket = Basket.objects.create()
-        instance.basket = basket
-        instance.save()
 
 class TutoringStudent(models.Model):
   name = models.CharField(max_length=100)

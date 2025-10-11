@@ -10,10 +10,13 @@ import stripe
 import os
 from dotenv import load_dotenv
 import uuid
+import time
 
 from stripeInt.models import StripeProd
-from tutoring.models import BasketItem, Parent
+from django.core.management import call_command
+from tutoring.models import Parent, TutoringStudent, Group, Lesson, Attendance, LocalInvoice
 from .services import generateInvoices
+import stripe
 
 load_dotenv()
 
@@ -91,74 +94,143 @@ class ServicesTest(StaticLiveServerTestCase):
         
         # Call parent cleanup
         super().tearDownClass()
-  
+
     def test_SimpleHappyPath(self):
         '''
-        Things that I aim to test
-        1.
-        Happy path, creating a customer, creating a product with a price or separately
-        then invoicing that customer. The invoice details should match the preferences
+        Things that I aim to test:
+        1. Happy path - creating a customer, creating a product with a price,
+        scheduling lessons, creating students and attendances, then invoicing.
+        The invoice details should match the preferences and attendance data.
         '''
         name = uniquify("Jenny Rosen")
         email = uniquify("jennyrosen@example.com")
         product_name = uniquify("Private, In Person")
-
+        
         self.assertEqual(len(Parent.objects.all()), 0)
         self.assertEqual(len(StripeProd.objects.all()), 0)
-
+        
+        # Create Stripe customer
         customer = stripe.Customer.create(
-        name = name,
-        email = email,
+            name=name,
+            email=email,
         )
-
+        
         time.sleep(2)
-
+        
         self.assertEqual(len(Parent.objects.all()), 1)
         self.assertEqual(len(StripeProd.objects.all()), 0)
-
+        
+        # Create Stripe product and price
         product = stripe.Product.create(
             name=product_name,
         )
         
         time.sleep(3)
-
+        
         stripe.Price.create(
             currency="AUD",
-            unit_amount=6000,
+            unit_amount=6000,  # $60 per hour
             product=product.id,
         )
-
+        
         time.sleep(3)
-
+        
         self.assertEqual(len(Parent.objects.all()), 1)
         self.assertEqual(len(StripeProd.objects.all()), 1)
-
+        
+        # Get parent and product from database
         parent = Parent.objects.get(name=name)
         parent.payment_frequency = 'fortnightly'
-        product = StripeProd.objects.get(name=product_name)
-        basketItem = BasketItem(
-            basket=parent.basket,
-            product=product,
-            quantity=2
-        )
-        basketItem.save()
-        # TODO: quantity can't always be 2
         parent.save()
-
+        
+        product_obj = StripeProd.objects.get(name=product_name)
+        
+        # Create a group with associated product
+        group = Group.objects.create(
+            tutor="Test Tutor",
+            course=Group.CourseChoices.YEAR11_ADV,
+            day_of_week=Group.Weekday.MONDAY,
+            time_of_day="14:00:00",
+            lesson_length=1,  # 1 hour lessons
+            associated_product=product_obj
+        )
+        
+        # Create a student
+        student = TutoringStudent.objects.create(
+            name=uniquify("Test Student"),
+            parent=parent,
+            active=True
+        )
+        student.group.add(group)
+        
+        # Schedule lessons using management command
+        call_command('set_term', '2025-10-13')
+        
+        # Get lessons scheduled for the next 2 weeks (fortnightly period)
+        from datetime import datetime, timedelta
+        period_start = datetime.now()
+        period_end = period_start + timedelta(weeks=2)
+        
+        lessons = Lesson.objects.filter(
+            group=group,
+            date__gte=period_start,
+            date__lt=period_end
+        )
+        
+        # Verify attendances were created (via signal)
+        expected_attendance_count = lessons.count()
+        self.assertGreater(expected_attendance_count, 0, "Should have lessons scheduled")
+        
+        attendances = Attendance.objects.filter(
+            tutoringStudent=student,
+            lesson__in=lessons
+        )
+        self.assertEqual(attendances.count(), expected_attendance_count)
+        
+        # Generate invoices
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
-
+        
+        # Verify invoice was created
         invoices = stripe.Invoice.list(limit=10)
         customerFound = False
+        
         for invoice in invoices['data']:
-            if(parent.stripeId == invoice['customer']):
+            if parent.stripeId == invoice['customer']:
                 customerFound = True
-                amount = invoice['subtotal']
+                
+                # Get invoice line items
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
+                
+                # Should have 1 line item (grouped by product)
                 self.assertEqual(len(line_items), 1)
-                self.assertEqual(line_items[0]['amount'], 24000)
-                self.assertEqual(line_items[0]['quantity'], 4)
-
-        self.assertTrue(customerFound)
+                
+                # Each attendance is 1 hour, so quantity = number of lessons in 2-week period
+                expected_quantity = expected_attendance_count * 1.0  # lesson_length
+                self.assertEqual(line_items[0]['quantity'], expected_quantity)
+                
+                # Amount = $60 * quantity
+                expected_amount = 6000 * expected_quantity
+                self.assertEqual(line_items[0]['amount'], expected_amount)
+                
+                # Verify description contains student name
+                self.assertIn(student.name, line_items[0]['description'])
+                
+                break
+        
+        self.assertTrue(customerFound, "Invoice should be created for the parent")
+        
+        # Verify LocalInvoice was created and linked to attendances
+        local_invoice = LocalInvoice.objects.get(stripeInvoiceId=invoice['id'])
+        self.assertIsNotNone(local_invoice)
+        
+        # Verify all attendances are linked to the local invoice
+        linked_attendances = local_invoice.attendances.all()
+        self.assertEqual(linked_attendances.count(), expected_attendance_count)
+        
+        # Verify each attendance is linked
+        for attendance in attendances:
+            attendance.refresh_from_db()
+            self.assertEqual(attendance.local_invoice, local_invoice)
 
     def test_invoicingCorrectQuantities(self):
   
@@ -219,20 +291,9 @@ class ServicesTest(StaticLiveServerTestCase):
         parent2.payment_frequency = 'halftermly'
         parent1.save()
         parent2.save()
-        product = StripeProd.objects.get(name=product_name1)
-        # same product for both
-        basketItem1 = BasketItem(
-            basket=parent1.basket,
-            product=product,
-            quantity=2
-        )
-        basketItem2 = BasketItem(
-            basket=parent2.basket,
-            product=product,
-            quantity=2
-        )
-        basketItem1.save()
-        basketItem2.save()
+
+        # Schedule lessons using management command
+        call_command('set_term', '2025-10-13')
 
         generateInvoices(frequency="fortnightly", amount_of_weeks=2)
         generateInvoices(frequency="halftermly", amount_of_weeks=5)
@@ -324,12 +385,25 @@ class ServicesTest(StaticLiveServerTestCase):
         parent.save()
         
         stripe_product = StripeProd.objects.get(name=product_name)
-        basketItem = BasketItem(
-            basket=parent.basket,
-            product=stripe_product,
-            quantity=3
+        group = Group.objects.create(
+            tutor="Test Tutor",
+            course=Group.CourseChoices.YEAR11_ADV,
+            day_of_week=Group.Weekday.MONDAY,
+            time_of_day="14:00:00",
+            lesson_length=1,  # 1 hour lessons
+            associated_product=stripe_product
         )
-        basketItem.save()
+        
+        # Create a student
+        student = TutoringStudent.objects.create(
+            name=uniquify("Test Student"),
+            parent=parent,
+            active=True
+        )
+        student.group.add(group)
+
+        # Schedule lessons using management command
+        call_command('set_term', '2025-10-13')
 
         # Generate initial invoice
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
@@ -344,8 +418,8 @@ class ServicesTest(StaticLiveServerTestCase):
                 initial_invoice_found = True
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 self.assertEqual(len(line_items), 1)
-                self.assertEqual(line_items[0]['amount'], 5000 * 3 * 2)  # $50 * 3 hours * 2 weeks
-                self.assertEqual(line_items[0]['quantity'], 6)
+                self.assertEqual(line_items[0]['amount'], 5000 * 1 * 2)  # $50 * 3 hours * 2 weeks
+                self.assertEqual(line_items[0]['quantity'], 2)
                 break
 
         self.assertTrue(initial_invoice_found)
@@ -370,10 +444,10 @@ class ServicesTest(StaticLiveServerTestCase):
         for invoice in invoices['data']:
             if parent.stripeId == invoice['customer']:
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
-                if len(line_items) > 0 and line_items[0]['amount'] == 6500 * 3 * 2:
+                if len(line_items) > 0 and line_items[0]['amount'] == 6500 * 1 * 2:
                     price_change_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 3 * 2)  # $65 * 3 hours * 2 weeks
-                    self.assertEqual(line_items[0]['quantity'], 6)
+                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 3 hours * 2 weeks
+                    self.assertEqual(line_items[0]['quantity'], 2)
                     break
 
         self.assertTrue(price_change_invoice_found)
@@ -424,10 +498,10 @@ class ServicesTest(StaticLiveServerTestCase):
             if parent.stripeId == invoice['customer']:
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 # Look for the halftermly invoice (5 weeks worth)
-                if len(line_items) > 0 and line_items[0]['quantity'] == 15:  # 3 hours * 5 weeks
+                if len(line_items) > 0 and line_items[0]['quantity'] == 5:  # 1 hours * 5 weeks
                     frequency_change_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 3 * 5)  # $65 * 3 hours * 5 weeks
-                    self.assertEqual(line_items[0]['quantity'], 15)
+                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 5)  # $65 * 1 hours * 5 weeks
+                    self.assertEqual(line_items[0]['quantity'], 5)
                     break
 
         self.assertTrue(frequency_change_invoice_found)
@@ -447,36 +521,13 @@ class ServicesTest(StaticLiveServerTestCase):
             if parent.stripeId == invoice['customer']:
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 # Look for the fortnightly invoice (2 weeks worth)
-                if len(line_items) > 0 and line_items[0]['quantity'] == 6:  # 3 hours * 2 weeks
+                if len(line_items) > 0 and line_items[0]['quantity'] == 2:  # 1 hours * 2 weeks
                     back_to_original_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 3 * 2)  # $65 * 3 hours * 2 weeks
-                    self.assertEqual(line_items[0]['quantity'], 6)
-                    break
-
-        self.assertTrue(back_to_original_invoice_found)
-
-        # TEST 5: Change quantity in basket
-        basketItem.quantity = 1  # Change from 3 to 1
-        basketItem.save()
-
-        generateInvoices(frequency='fortnightly', amount_of_weeks=2)
-
-        time.sleep(3)
-
-        # Verify quantity change is reflected
-        invoices = stripe.Invoice.list(limit=60)
-        quantity_change_invoice_found = False
-        for invoice in invoices['data']:
-            if parent.stripeId == invoice['customer']:
-                line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
-                # Look for the invoice with new quantity (1 hour * 2 weeks)
-                if len(line_items) > 0 and line_items[0]['quantity'] == 2:
-                    quantity_change_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 1 hour * 2 weeks
+                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 1 hours * 2 weeks
                     self.assertEqual(line_items[0]['quantity'], 2)
                     break
 
-        self.assertTrue(quantity_change_invoice_found)
+        self.assertTrue(back_to_original_invoice_found)
 
 
         '''
