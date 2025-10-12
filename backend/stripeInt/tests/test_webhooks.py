@@ -1,8 +1,9 @@
+from datetime import datetime, timezone
 from unittest.mock import patch
 from django.test import Client, TestCase
 import stripe
 
-from tutoring.models import Parent
+from tutoring.models import LocalInvoice, Parent
 
 from stripeInt.models import StripeProd
 
@@ -194,3 +195,317 @@ class WebHooksTest(TestCase):
 
     parent = Parent.objects.get(stripeId=randomId)
     self.assertFalse(parent.is_active)
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoiceCreated_HappyPath(self, mock_construct_event):
+      randomId = "in_1234567890"
+      mock_construct_event.return_value = {
+          'type': 'invoice.created',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'open',
+                  'amount_due': 5000,
+                  'amount_paid': 0,
+                  'currency': 'usd',
+                  'created': 1609459200,  # 2021-01-01 00:00:00 UTC
+                  'status_transitions': {
+                      'paid_at': None
+                  },
+                  'customer': 'cus_test123'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
+      self.assertIsNotNone(invoice)
+      self.assertEqual(invoice.status, 'open')
+      self.assertEqual(invoice.amount_due, 5000)
+      self.assertEqual(invoice.amount_paid, 0)
+      self.assertEqual(invoice.currency, 'usd')
+      self.assertEqual(invoice.customer_stripe_id, 'cus_test123')
+      self.assertIsNone(invoice.status_transitions_paid_at)
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoiceCreated_SignatureFailed(self, mock_construct_event):
+      randomId = "in_1234567890"
+      mock_construct_event.side_effect = stripe.error.SignatureVerificationError(
+          "Signature could not be verified", 
+          "Header"
+      )
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      with self.assertRaises(LocalInvoice.DoesNotExist):
+          LocalInvoice.objects.get(stripeInvoiceId=randomId)
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoiceUpdated_HappyPath(self, mock_construct_event):
+      randomId = "in_1234567890"
+      
+      # Create original invoice
+      original_invoice = LocalInvoice.objects.create(
+          stripeInvoiceId=randomId,
+          status='open',
+          amount_due=5000,
+          amount_paid=0,
+          currency='usd',
+          created=datetime(2021, 1, 1, tzinfo=timezone.utc),
+          customer_stripe_id='cus_test123'
+      )
+
+      mock_construct_event.return_value = {
+          'type': 'invoice.updated',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'open',
+                  'amount_due': 7500,  # Updated amount
+                  'amount_paid': 0,
+                  'currency': 'usd',
+                  'created': 1609459200,
+                  'status_transitions': {
+                      'paid_at': None
+                  },
+                  'customer': 'cus_test123'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
+      self.assertEqual(invoice.amount_due, 7500)
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoicePaid_HappyPath(self, mock_construct_event):
+      randomId = "in_1234567890"
+      paid_timestamp = 1609545600  # 2021-01-02 00:00:00 UTC
+      
+      # Create original unpaid invoice
+      original_invoice = LocalInvoice.objects.create(
+          stripeInvoiceId=randomId,
+          status='open',
+          amount_due=5000,
+          amount_paid=0,
+          currency='usd',
+          created=datetime(2021, 1, 1, tzinfo=timezone.utc),
+          customer_stripe_id='cus_test123'
+      )
+
+      mock_construct_event.return_value = {
+          'type': 'invoice.paid',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'paid',
+                  'amount_due': 5000,
+                  'amount_paid': 5000,
+                  'currency': 'usd',
+                  'created': 1609459200,
+                  'status_transitions': {
+                      'paid_at': paid_timestamp
+                  },
+                  'customer': 'cus_test123'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
+      self.assertEqual(invoice.status, 'paid')
+      self.assertEqual(invoice.amount_paid, 5000)
+      self.assertIsNotNone(invoice.status_transitions_paid_at)
+      self.assertEqual(
+          invoice.status_transitions_paid_at,
+          datetime.fromtimestamp(paid_timestamp, tz=timezone.utc)
+      )
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoicePaymentSucceeded_HappyPath(self, mock_construct_event):
+      randomId = "in_1234567890"
+      paid_timestamp = 1609545600
+      
+      # Create original unpaid invoice
+      original_invoice = LocalInvoice.objects.create(
+          stripeInvoiceId=randomId,
+          status='open',
+          amount_due=5000,
+          amount_paid=0,
+          currency='usd',
+          created=datetime(2021, 1, 1, tzinfo=timezone.utc),
+          customer_stripe_id='cus_test123'
+      )
+
+      mock_construct_event.return_value = {
+          'type': 'invoice.payment_succeeded',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'paid',
+                  'amount_due': 5000,
+                  'amount_paid': 5000,
+                  'currency': 'usd',
+                  'created': 1609459200,
+                  'status_transitions': {
+                      'paid_at': paid_timestamp
+                  },
+                  'customer': 'cus_test123'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
+      self.assertEqual(invoice.status, 'paid')
+      self.assertEqual(invoice.amount_paid, 5000)
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoiceVoided_HappyPath(self, mock_construct_event):
+      randomId = "in_1234567890"
+      
+      # Create original invoice
+      original_invoice = LocalInvoice.objects.create(
+          stripeInvoiceId=randomId,
+          status='open',
+          amount_due=5000,
+          amount_paid=0,
+          currency='usd',
+          created=datetime(2021, 1, 1, tzinfo=timezone.utc),
+          customer_stripe_id='cus_test123'
+      )
+
+      mock_construct_event.return_value = {
+          'type': 'invoice.voided',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'void',
+                  'amount_due': 5000,
+                  'amount_paid': 0,
+                  'currency': 'usd',
+                  'created': 1609459200,
+                  'status_transitions': {
+                      'paid_at': None
+                  },
+                  'customer': 'cus_test123'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
+      self.assertEqual(invoice.status, 'void')
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoiceDeleted_HappyPath(self, mock_construct_event):
+      randomId = "in_1234567890"
+      
+      # Create original invoice
+      original_invoice = LocalInvoice.objects.create(
+          stripeInvoiceId=randomId,
+          status='draft',
+          amount_due=5000,
+          amount_paid=0,
+          currency='usd',
+          created=datetime(2021, 1, 1, tzinfo=timezone.utc),
+          customer_stripe_id='cus_test123'
+      )
+
+      mock_construct_event.return_value = {
+          'type': 'invoice.deleted',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'draft',
+                  'amount_due': 5000,
+                  'amount_paid': 0,
+                  'currency': 'usd',
+                  'created': 1609459200,
+                  'status_transitions': {
+                      'paid_at': None
+                  },
+                  'customer': 'cus_test123'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      with self.assertRaises(LocalInvoice.DoesNotExist):
+          LocalInvoice.objects.get(stripeInvoiceId=randomId)
+
+  @patch("stripe.Webhook.construct_event")
+  def testInvoiceUpdated_CreateIfNotExists(self, mock_construct_event):
+      """Test that updating a non-existent invoice creates it"""
+      randomId = "in_9999999999"
+
+      mock_construct_event.return_value = {
+          'type': 'invoice.updated',
+          'data': {
+              'object': {
+                  'id': randomId,
+                  'status': 'open',
+                  'amount_due': 3000,
+                  'amount_paid': 0,
+                  'currency': 'usd',
+                  'created': 1609459200,
+                  'status_transitions': {
+                      'paid_at': None
+                  },
+                  'customer': 'cus_test456'
+              }
+          }
+      }
+
+      res = self.client.post(
+          self.url,
+          data=b"{}",
+          content_type="application/json",
+          HTTP_STRIPE_SIGNATURE="fake_signature"
+      )
+
+      # Should create the invoice even though it didn't exist
+      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
+      self.assertIsNotNone(invoice)
+      self.assertEqual(invoice.amount_due, 3000)

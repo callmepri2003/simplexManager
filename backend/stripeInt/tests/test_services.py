@@ -190,13 +190,18 @@ class ServicesTest(StaticLiveServerTestCase):
         # Generate invoices
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
         
+        # Wait for webhooks to process
+        time.sleep(3)
+        
         # Verify invoice was created
         invoices = stripe.Invoice.list(limit=10)
         customerFound = False
+        invoice_id = None
         
         for invoice in invoices['data']:
             if parent.stripeId == invoice['customer']:
                 customerFound = True
+                invoice_id = invoice['id']
                 
                 # Get invoice line items
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
@@ -219,9 +224,11 @@ class ServicesTest(StaticLiveServerTestCase):
         
         self.assertTrue(customerFound, "Invoice should be created for the parent")
         
-        # Verify LocalInvoice was created and linked to attendances
-        local_invoice = LocalInvoice.objects.get(stripeInvoiceId=invoice['id'])
+        # Verify LocalInvoice was created via webhook
+        local_invoice = LocalInvoice.objects.get(stripeInvoiceId=invoice_id)
         self.assertIsNotNone(local_invoice)
+        self.assertEqual(local_invoice.status, 'open')  # Invoice is finalized but not paid yet
+        self.assertEqual(local_invoice.customer_stripe_id, parent.stripeId)
         
         # Verify all attendances are linked to the local invoice
         linked_attendances = local_invoice.attendances.all()
@@ -248,7 +255,7 @@ class ServicesTest(StaticLiveServerTestCase):
         product_name1 = uniquify("Private, In Person")
 
         name2 = uniquify("Jenny Rosen 2")
-        email2 = uniquify("jennyrosen@example.com")
+        email2 = uniquify("jennyrosen2@example.com")
         product_name2 = uniquify("Group, Year 5-6")
 
         self.assertEqual(len(Parent.objects.all()), 0)
@@ -256,7 +263,7 @@ class ServicesTest(StaticLiveServerTestCase):
 
         customer1 = stripe.Customer.create(
             name = name1,
-            email = email2,
+            email = email1,
         )
         customer2 = stripe.Customer.create(
             name = name2,
@@ -273,7 +280,7 @@ class ServicesTest(StaticLiveServerTestCase):
             name=product_name1,
         )
 
-        # Create a student
+        # Create students
         student1 = TutoringStudent.objects.create(
             name=uniquify("Test Student1"),
             parent=Parent.objects.get(name=name1),
@@ -327,40 +334,56 @@ class ServicesTest(StaticLiveServerTestCase):
         generateInvoices(frequency="halftermly", amount_of_weeks=5)
         generateInvoices(frequency="weekly", amount_of_weeks=1)
 
-        time.sleep(3)
+        time.sleep(5)  # Wait longer for multiple webhooks to process
 
         invoices = stripe.Invoice.list(limit=500)
         parent1Found = False
         parent2Found = False
-        with open("invoice_ids.txt", "w") as f:
-            while True:
-                for invoice in invoices['data']:
-                    if parent1.stripeId == invoice['customer']:
-                        parent1Found = True
-                        line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
-                        self.assertEqual(len(line_items), 1)
-                        self.assertEqual(line_items[0]['amount'], 6000 * 1 * 2)  # 60 dollars for 2 hours for 2 weeks
-                        self.assertEqual(line_items[0]['quantity'], 2)
+        parent1_invoice_id = None
+        parent2_invoice_id = None
+        
+        while True:
+            for invoice in invoices['data']:
+                if parent1.stripeId == invoice['customer']:
+                    parent1Found = True
+                    parent1_invoice_id = invoice['id']
+                    line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
+                    self.assertEqual(len(line_items), 1)
+                    self.assertEqual(line_items[0]['amount'], 6000 * 1 * 2)  # 60 dollars for 1 hour for 2 weeks
+                    self.assertEqual(line_items[0]['quantity'], 2)
 
-                    elif parent2.stripeId == invoice['customer']:
-                        parent2Found = True
-                        line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
-                        self.assertEqual(len(line_items), 1)
-                        self.assertEqual(line_items[0]['amount'], 6000 * 1 * 5)  # 60 dollars for 2 hours for 5 weeks
-                        self.assertEqual(line_items[0]['quantity'], 5)
-
-                    if parent1Found and parent2Found:
-                        break
+                elif parent2.stripeId == invoice['customer']:
+                    parent2Found = True
+                    parent2_invoice_id = invoice['id']
+                    line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
+                    self.assertEqual(len(line_items), 1)
+                    self.assertEqual(line_items[0]['amount'], 6000 * 1 * 5)  # 60 dollars for 1 hour for 5 weeks
+                    self.assertEqual(line_items[0]['quantity'], 5)
 
                 if parent1Found and parent2Found:
                     break
 
-                if invoices.has_more:
-                    invoices = invoices.next_page()
-                else:
-                    break
+            if parent1Found and parent2Found:
+                break
+
+            if invoices.has_more:
+                invoices = invoices.next_page()
+            else:
+                break
+                
         self.assertTrue(parent1Found)
         self.assertTrue(parent2Found)
+        
+        # Verify LocalInvoices were created via webhooks
+        local_invoice1 = LocalInvoice.objects.get(stripeInvoiceId=parent1_invoice_id)
+        local_invoice2 = LocalInvoice.objects.get(stripeInvoiceId=parent2_invoice_id)
+        
+        self.assertIsNotNone(local_invoice1)
+        self.assertIsNotNone(local_invoice2)
+        
+        # Verify attendances are linked
+        self.assertEqual(local_invoice1.attendances.count(), 2)  # 2 weeks of lessons
+        self.assertEqual(local_invoice2.attendances.count(), 5)  # 5 weeks of lessons
 
 
 
@@ -436,21 +459,27 @@ class ServicesTest(StaticLiveServerTestCase):
         # Generate initial invoice
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
 
-        time.sleep(3)
+        time.sleep(4)  # Wait for webhooks
 
         # Verify initial invoice
         invoices = stripe.Invoice.list(limit=10)
         initial_invoice_found = False
+        initial_invoice_id = None
         for invoice in invoices['data']:
             if parent.stripeId == invoice['customer']:
                 initial_invoice_found = True
+                initial_invoice_id = invoice['id']
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 self.assertEqual(len(line_items), 1)
-                self.assertEqual(line_items[0]['amount'], 5000 * 1 * 2)  # $50 * 3 hours * 2 weeks
+                self.assertEqual(line_items[0]['amount'], 5000 * 1 * 2)  # $50 * 1 hour * 2 weeks
                 self.assertEqual(line_items[0]['quantity'], 2)
                 break
 
         self.assertTrue(initial_invoice_found)
+        
+        # Verify LocalInvoice created via webhook
+        local_invoice1 = LocalInvoice.objects.get(stripeInvoiceId=initial_invoice_id)
+        self.assertIsNotNone(local_invoice1)
 
         # TEST 1: Change price
         new_price = stripe.Price.create(
@@ -464,21 +493,27 @@ class ServicesTest(StaticLiveServerTestCase):
         # Generate invoice after price change
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
 
-        time.sleep(3)
+        time.sleep(4)
 
         # Verify new price is reflected
         invoices = stripe.Invoice.list(limit=20)
         price_change_invoice_found = False
+        price_change_invoice_id = None
         for invoice in invoices['data']:
             if parent.stripeId == invoice['customer']:
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 if len(line_items) > 0 and line_items[0]['amount'] == 6500 * 1 * 2:
                     price_change_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 3 hours * 2 weeks
+                    price_change_invoice_id = invoice['id']
+                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 1 hour * 2 weeks
                     self.assertEqual(line_items[0]['quantity'], 2)
                     break
 
         self.assertTrue(price_change_invoice_found)
+        
+        # Verify new LocalInvoice created
+        local_invoice2 = LocalInvoice.objects.get(stripeInvoiceId=price_change_invoice_id)
+        self.assertIsNotNone(local_invoice2)
 
         # TEST 2: Change customer details
         updated_name = uniquify("John Smith Updated")
@@ -492,10 +527,14 @@ class ServicesTest(StaticLiveServerTestCase):
 
         time.sleep(3)
 
+        # Verify parent was updated via webhook
+        parent.refresh_from_db()
+        self.assertEqual(parent.name, updated_name)
+
         # Generate invoice after customer update
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
 
-        time.sleep(3)
+        time.sleep(4)
 
         # Verify invoice still works with updated customer
         invoices = stripe.Invoice.list(limit=30)
@@ -517,22 +556,28 @@ class ServicesTest(StaticLiveServerTestCase):
         # Generate invoice with new frequency
         generateInvoices(frequency='halftermly', amount_of_weeks=5)
 
-        time.sleep(3)
+        time.sleep(4)
 
         # Verify correct quantity for new frequency
         invoices = stripe.Invoice.list(limit=40)
         frequency_change_invoice_found = False
+        frequency_change_invoice_id = None
         for invoice in invoices['data']:
             if parent.stripeId == invoice['customer']:
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 # Look for the halftermly invoice (5 weeks worth)
-                if len(line_items) > 0 and line_items[0]['quantity'] == 5:  # 1 hours * 5 weeks
+                if len(line_items) > 0 and line_items[0]['quantity'] == 5:  # 1 hour * 5 weeks
                     frequency_change_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 5)  # $65 * 1 hours * 5 weeks
+                    frequency_change_invoice_id = invoice['id']
+                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 5)  # $65 * 1 hour * 5 weeks
                     self.assertEqual(line_items[0]['quantity'], 5)
                     break
 
         self.assertTrue(frequency_change_invoice_found)
+        
+        # Verify LocalInvoice created
+        local_invoice3 = LocalInvoice.objects.get(stripeInvoiceId=frequency_change_invoice_id)
+        self.assertIsNotNone(local_invoice3)
 
         # TEST 4: Change back to original frequency and verify it still works
         parent.payment_frequency = original_frequency
@@ -540,7 +585,7 @@ class ServicesTest(StaticLiveServerTestCase):
 
         generateInvoices(frequency='fortnightly', amount_of_weeks=2)
 
-        time.sleep(3)
+        time.sleep(4)
 
         # Verify we can change back successfully
         invoices = stripe.Invoice.list(limit=50)
@@ -549,9 +594,9 @@ class ServicesTest(StaticLiveServerTestCase):
             if parent.stripeId == invoice['customer']:
                 line_items = stripe.InvoiceItem.list(invoice=invoice.id, limit=100).to_dict()['data']
                 # Look for the fortnightly invoice (2 weeks worth)
-                if len(line_items) > 0 and line_items[0]['quantity'] == 2:  # 1 hours * 2 weeks
+                if len(line_items) > 0 and line_items[0]['quantity'] == 2:  # 1 hour * 2 weeks
                     back_to_original_invoice_found = True
-                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 1 hours * 2 weeks
+                    self.assertEqual(line_items[0]['amount'], 6500 * 1 * 2)  # $65 * 1 hour * 2 weeks
                     self.assertEqual(line_items[0]['quantity'], 2)
                     break
 

@@ -202,6 +202,50 @@ export async function deleteLesson(id){
   }
 }
 
+// GET * (All Lessons)
+export function useGetAllLessons(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get('/api/lessons/all/')
+      .then(res => {
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching lessons:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+  }, [])
+  return [data, loading, error]
+}
+
+// GET :id (Single Lesson)
+export function useGetLessonById(id){
+  const [lessonData, setLessonData] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    
+    API.get(`/api/lessons/detail/${id}/`)
+      .then(res => setLessonData(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [id])
+  
+  return [lessonData, loading, error]
+}
+
 // ----- Resource Services -----
 export async function newResources(resourceData){
   try {
@@ -214,3 +258,90 @@ export async function newResources(resourceData){
 }
 
 export default API;
+
+// GET * (All Students)
+export function useGetAllStudents(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get('/api/students/')
+      .then(res => {
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching students:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+  }, [])
+  return [data, loading, error]
+}
+
+// GET :id (Single Student)
+export function useGetStudentById(id){
+  const [studentData, setStudentData] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    
+    API.get(`/api/students/${id}/`)
+      .then(res => setStudentData(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [id])
+  
+  return [studentData, loading, error]
+}
+
+// ----- Dashboard Services -----
+
+// GET dashboard data with optional date range
+export function useGetDashboardData(startDate = null, endDate = null) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const params = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+
+    API.get('/api/dashboard/', { params })
+      .then(res => {
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching dashboard data:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [startDate, endDate]);
+
+  return [data, loading, error];
+}
+
+// Manual fetch function (for refreshing data)
+export async function getDashboardData(startDate = null, endDate = null) {
+  try {
+    const params = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+
+    const res = await API.get('/api/dashboard/', { params });
+    return res.data;
+  } catch (err) {
+    throw err;
+  }
+}

@@ -9,32 +9,47 @@ import base64
 
 class LocalInvoice(models.Model):
     """
-    Lightweight local reference to a Stripe invoice.
-    All invoice data should be fetched from Stripe to avoid inconsistencies.
-    This model only stores the Stripe invoice ID and provides a link to attendances.
-    Use the attendances reverse relationship to see which attendances are on this invoice.
+    Local copy of essential Stripe invoice data for revenue calculations.
+    Synced via webhooks. Use get_stripe_invoice() for full invoice data.
     """
-    stripeInvoiceId = models.CharField(max_length=255, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    stripeInvoiceId = models.CharField(max_length=255, unique=True, db_index=True)
+    
+    # Essential fields for revenue calculations
+    status = models.CharField(max_length=50)  # paid, open, void, uncollectible, etc.
+    amount_due = models.IntegerField()  # in cents
+    amount_paid = models.IntegerField(default=0)  # in cents
+    currency = models.CharField(max_length=3, default='usd')
+    
+    # Timestamps for revenue reporting
+    created = models.DateTimeField()  # When invoice was created in Stripe
+    status_transitions_paid_at = models.DateTimeField(null=True, blank=True)  # When it was paid
+    
+    # Metadata
+    customer_stripe_id = models.CharField(max_length=255, null=True, blank=True)
+    last_synced = models.DateTimeField(auto_now=True)
     
     def get_stripe_invoice(self):
-        """Fetch the full invoice data from Stripe"""
+        """Fetch the full invoice data from Stripe when needed"""
         import stripe
         stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
         return stripe.Invoice.retrieve(self.stripeInvoiceId)
     
     def is_paid(self):
-        """Check if the invoice is paid by fetching status from Stripe"""
-        invoice = self.get_stripe_invoice()
-        return invoice.status == 'paid'
+        """Check if invoice is paid using local data"""
+        return self.status == 'paid'
     
-    def get_status(self):
-        """Get the current status from Stripe"""
-        invoice = self.get_stripe_invoice()
-        return invoice.status
+    def get_amount_in_dollars(self):
+        """Convert cents to dollars"""
+        return self.amount_paid / 100
     
     def __str__(self):
-        return f"LocalInvoice {self.id} - Stripe: {self.stripeInvoiceId}"
+        return f"Invoice {self.stripeInvoiceId} - {self.status} - ${self.get_amount_in_dollars()}"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['status', 'status_transitions_paid_at']),  # For revenue queries
+            models.Index(fields=['created']),
+        ]
 
 class Group(models.Model):
     class CourseChoices(models.TextChoices):
