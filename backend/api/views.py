@@ -9,8 +9,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework import status
 
-from tutoring.models import Attendance, Group, Lesson, Resource
-from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer, ResourceSerializer
+from tutoring.models import Attendance, Group, Lesson, LocalInvoice, Resource, TutoringStudent
+from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer, ResourceSerializer, TutoringStudentSerializer
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
 
@@ -97,3 +97,62 @@ class addResource(APIView):
 
         else:
             return Response(sz.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Add to your views.py
+
+class getFullInvoice(APIView):
+    def get(self, request, stripe_invoice_id):
+        try:
+            local_invoice = LocalInvoice.objects.get(stripeInvoiceId=stripe_invoice_id)
+            stripe_invoice = local_invoice.get_stripe_invoice()
+            
+            invoice_dict = stripe_invoice.to_dict()
+            
+            return Response(invoice_dict, status=status.HTTP_200_OK)
+            
+        except LocalInvoice.DoesNotExist:
+            return Response(
+                {"error": "Invoice not found in local database"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class getAllStudents(APIView):
+    def get(self, request):
+        students = TutoringStudent.objects.all()
+        sz = TutoringStudentSerializer(students, many=True)
+        return Response(sz.data)
+
+class getStudentById(APIView):
+    def get(self, request, id):
+        try:
+            student = TutoringStudent.objects.get(id=id)
+            sz = TutoringStudentSerializer(student)
+            return Response(sz.data)
+        except TutoringStudent.DoesNotExist:
+            return Response(
+                {"error": "Student not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class getAllLessons(APIView):
+    def get(self, request):
+        lessons = Lesson.objects.all()
+        sz = LessonSerializer(lessons, many=True)
+        return Response(sz.data)
+
+class getLessonById(APIView):
+    def get(self, request, id):
+        try:
+            lesson = Lesson.objects.get(id=id)
+            sz = LessonSerializer(lesson)
+            return Response(sz.data)
+        except Lesson.DoesNotExist:
+            return Response(
+                {"error": "Lesson not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )

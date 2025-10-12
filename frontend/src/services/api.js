@@ -202,6 +202,50 @@ export async function deleteLesson(id){
   }
 }
 
+// GET * (All Lessons)
+export function useGetAllLessons(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get('/api/lessons/all/')
+      .then(res => {
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching lessons:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+  }, [])
+  return [data, loading, error]
+}
+
+// GET :id (Single Lesson)
+export function useGetLessonById(id){
+  const [lessonData, setLessonData] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    
+    API.get(`/api/lessons/detail/${id}/`)
+      .then(res => setLessonData(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [id])
+  
+  return [lessonData, loading, error]
+}
+
 // ----- Resource Services -----
 export async function newResources(resourceData){
   try {
@@ -214,3 +258,47 @@ export async function newResources(resourceData){
 }
 
 export default API;
+
+// GET * (All Students)
+export function useGetAllStudents(){
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    API.get('/api/students/')
+      .then(res => {
+        setData(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching students:", err);
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+  }, [])
+  return [data, loading, error]
+}
+
+// GET :id (Single Student)
+export function useGetStudentById(id){
+  const [studentData, setStudentData] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    
+    API.get(`/api/students/${id}/`)
+      .then(res => setStudentData(res.data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false))
+  }, [id])
+  
+  return [studentData, loading, error]
+}

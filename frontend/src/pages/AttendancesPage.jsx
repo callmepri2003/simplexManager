@@ -1,67 +1,581 @@
-import React, { useState } from 'react';
-import { useGetAllAttendances } from "../services/api";
+import React, { useState, useMemo } from 'react';
+import { useGetAllAttendances, useGetAllStudents, useGetAllLessons, useGetAllGroups } from "../services/api";
 
-export default function AttendancePage() {
-  const [data, loading, error] = useGetAllAttendances();
-  const [selectedAttendance, setSelectedAttendance] = useState(null);
-  const [filterStudent, setFilterStudent] = useState('all');
-  const [filterLesson, setFilterLesson] = useState('all');
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
-
-  // Group attendances by lesson
-  const groupedByLesson = data?.reduce((acc, attendance) => {
-    const lessonId = attendance.lesson;
-    if (!acc[lessonId]) {
-      acc[lessonId] = [];
+// Utility function to group attendances by lesson
+const groupByLesson = (attendances) => {
+  const grouped = {};
+  attendances.forEach(att => {
+    if (!grouped[att.lesson]) {
+      grouped[att.lesson] = [];
     }
-    acc[lessonId].push(attendance);
-    return acc;
-  }, {}) || {};
+    grouped[att.lesson].push(att);
+  });
+  return grouped;
+};
 
-  // Get unique students and lessons for filters
-  const uniqueStudents = [...new Set(data?.map(a => a.tutoringStudent) || [])];
-  const uniqueLessons = [...new Set(data?.map(a => a.lesson) || [])];
+// Header Component with Filters
+function AttendanceHeader({ stats, filters, onFilterChange }) {
+  const { invoiceStatus, dateRange, selectedStudent, selectedGroup, searchQuery } = filters;
 
-  // Filter data
-  const filteredData = data?.filter(attendance => {
-    const studentMatch = filterStudent === 'all' || attendance.tutoringStudent === parseInt(filterStudent);
-    const lessonMatch = filterLesson === 'all' || attendance.lesson === parseInt(filterLesson);
-    return studentMatch && lessonMatch;
-  }) || [];
+  return (
+    <div className="row mb-4">
+      <div className="col-12">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="mb-0" style={{ color: '#004aad', fontWeight: 600 }}>
+            Attendance Overview
+          </h2>
+          <div className="btn-group" role="group">
+            <button
+              type="button"
+              className={`btn ${invoiceStatus === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => onFilterChange('invoiceStatus', 'all')}
+              style={{ 
+                borderColor: '#004aad', 
+                color: invoiceStatus === 'all' ? '#fff' : '#004aad', 
+                backgroundColor: invoiceStatus === 'all' ? '#004aad' : 'transparent' 
+              }}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`btn ${invoiceStatus === 'invoiced' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => onFilterChange('invoiceStatus', 'invoiced')}
+              style={{ 
+                borderColor: '#004aad', 
+                color: invoiceStatus === 'invoiced' ? '#fff' : '#004aad', 
+                backgroundColor: invoiceStatus === 'invoiced' ? '#004aad' : 'transparent' 
+              }}
+            >
+              Invoiced
+            </button>
+            <button
+              type="button"
+              className={`btn ${invoiceStatus === 'not-invoiced' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => onFilterChange('invoiceStatus', 'not-invoiced')}
+              style={{ 
+                borderColor: '#004aad', 
+                color: invoiceStatus === 'not-invoiced' ? '#fff' : '#004aad', 
+                backgroundColor: invoiceStatus === 'not-invoiced' ? '#004aad' : 'transparent' 
+              }}
+            >
+              Not Invoiced
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const handleViewInvoice = (invoice) => {
-    setSelectedInvoice(invoice);
-    setShowInvoiceModal(true);
+// Advanced Filters Component
+function AdvancedFilters({ filters, onFilterChange, students, groups, lessons }) {
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const dateRanges = [
+    { value: 'all', label: 'All Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'custom', label: 'Custom Range' },
+  ];
+
+  const activeFiltersCount = [
+    filters.selectedStudent !== 'all',
+    filters.selectedGroup !== 'all',
+    filters.dateRange !== 'all',
+    filters.searchQuery !== '',
+  ].filter(Boolean).length;
+
+  return (
+    <div className="row mb-4">
+      <div className="col-12">
+        <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
+          <div className="card-body">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div className="d-flex align-items-center gap-2">
+                <h6 className="mb-0" style={{ color: '#004aad', fontWeight: 600 }}>
+                  Advanced Filters
+                </h6>
+                {activeFiltersCount > 0 && (
+                  <span className="badge bg-primary" style={{ backgroundColor: '#004aad' }}>
+                    {activeFiltersCount} active
+                  </span>
+                )}
+              </div>
+              <button 
+                className="btn btn-sm btn-link text-decoration-none" 
+                onClick={() => setShowFilters(!showFilters)}
+                style={{ color: '#004aad' }}
+              >
+                {showFilters ? 'Hide' : 'Show'} Filters
+              </button>
+            </div>
+            
+            {showFilters && (
+              <div className="row g-3">
+                <div className="col-md-3">
+                  <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                    Search Lessons
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Search by lesson ID..."
+                    value={filters.searchQuery}
+                    onChange={(e) => onFilterChange('searchQuery', e.target.value)}
+                    style={{ fontSize: '0.875rem' }}
+                  />
+                </div>
+                
+                <div className="col-md-3">
+                  <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                    Student
+                  </label>
+                  <select 
+                    className="form-select"
+                    value={filters.selectedStudent}
+                    onChange={(e) => onFilterChange('selectedStudent', e.target.value)}
+                    style={{ fontSize: '0.875rem' }}
+                  >
+                    <option value="all">All Students</option>
+                    {students && students.map(student => (
+                      <option key={student.id} value={student.id}>
+                        {student.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="col-md-3">
+                  <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                    Group
+                  </label>
+                  <select 
+                    className="form-select"
+                    value={filters.selectedGroup}
+                    onChange={(e) => onFilterChange('selectedGroup', e.target.value)}
+                    style={{ fontSize: '0.875rem' }}
+                  >
+                    <option value="all">All Groups</option>
+                    {groups && groups.map(group => (
+                      <option key={group.id} value={group.id}>
+                        Group {group.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="col-md-3">
+                  <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                    Date Range
+                  </label>
+                  <select 
+                    className="form-select"
+                    value={filters.dateRange}
+                    onChange={(e) => onFilterChange('dateRange', e.target.value)}
+                    style={{ fontSize: '0.875rem' }}
+                  >
+                    {dateRanges.map(range => (
+                      <option key={range.value} value={range.value}>
+                        {range.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {filters.dateRange === 'custom' && (
+                  <>
+                    <div className="col-md-3">
+                      <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                        From Date
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={filters.customStartDate || ''}
+                        onChange={(e) => onFilterChange('customStartDate', e.target.value)}
+                        style={{ fontSize: '0.875rem' }}
+                      />
+                    </div>
+                    
+                    <div className="col-md-3">
+                      <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                        To Date
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={filters.customEndDate || ''}
+                        onChange={(e) => onFilterChange('customEndDate', e.target.value)}
+                        style={{ fontSize: '0.875rem' }}
+                      />
+                    </div>
+                  </>
+                )}
+                
+                <div className="col-12">
+                  <button 
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => {
+                      onFilterChange('selectedStudent', 'all');
+                      onFilterChange('selectedGroup', 'all');
+                      onFilterChange('dateRange', 'all');
+                      onFilterChange('searchQuery', '');
+                      onFilterChange('customStartDate', '');
+                      onFilterChange('customEndDate', '');
+                    }}
+                    style={{ fontSize: '0.875rem' }}
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Stats Cards Component
+function StatsCards({ stats }) {
+  const cards = [
+    { title: 'Total Attendances', value: stats.total, icon: 'fa-clipboard-list', color: '#004aad' },
+    { title: 'Invoiced', value: stats.invoiced, icon: 'fa-credit-card', color: '#17a2b8' },
+    { title: 'Not Invoiced', value: stats.notInvoiced, icon: 'fa-clock', color: '#ffc107' },
+    { title: 'Unique Lessons', value: stats.uniqueLessons, icon: 'fa-book', color: '#28a745' },
+  ];
+
+  return (
+    <div className="row g-3 mb-4">
+      {cards.map((card, idx) => (
+        <div key={idx} className="col-lg-3 col-md-6">
+          <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '12px' }}>
+            <div className="card-body">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <div 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    backgroundColor: `${card.color}15`,
+                    color: card.color
+                  }}
+                >
+                  <i className={`fas ${card.icon}`} style={{ fontSize: '1.25rem' }}></i>
+                </div>
+              </div>
+              <h6 className="text-muted mb-2" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                {card.title}
+              </h6>
+              <h3 className="mb-0" style={{ color: card.color, fontWeight: 700 }}>
+                {card.value}
+              </h3>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Lesson Card Component
+function LessonCard({ lessonId, attendances, studentsMap, lessonsMap }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasInvoice = attendances.some(att => att.local_invoice);
+  const invoiceInfo = attendances.find(att => att.local_invoice)?.local_invoice;
+  const lessonData = lessonsMap[lessonId];
+
+  return (
+    <div className="card border-0 shadow-sm mb-3" style={{ borderRadius: '12px' }}>
+      <div 
+        className="card-header bg-white border-0 d-flex justify-content-between align-items-center"
+        style={{ cursor: 'pointer', padding: '1.25rem' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div>
+          <h5 className="mb-1" style={{ color: '#004aad', fontWeight: 600 }}>
+            Lesson {lessonId}
+          </h5>
+          <div className="d-flex gap-3 align-items-center">
+            <small className="text-muted">
+              {attendances.length} {attendances.length === 1 ? 'student' : 'students'}
+            </small>
+            {lessonData && (
+              <>
+                {lessonData.date && (
+                  <small className="text-muted">
+                    <i className="far fa-calendar-alt me-1"></i>
+                    {new Date(lessonData.date).toLocaleDateString('en-AU', { 
+                      day: 'numeric', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}
+                  </small>
+                )}
+                {lessonData.group && (
+                  <small className="badge" style={{ backgroundColor: '#e7f3ff', color: '#004aad', fontSize: '0.75rem' }}>
+                    <i className="fas fa-users me-1"></i>
+                    Group {lessonData.group}
+                  </small>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        <div className="d-flex align-items-center gap-3">
+          {hasInvoice && (
+            <span className="badge" style={{ backgroundColor: '#17a2b8', padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>
+              Invoiced
+            </span>
+          )}
+          <i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} style={{ fontSize: '1.25rem', color: '#004aad' }}></i>
+        </div>
+      </div>
+      
+      {expanded && (
+        <div className="card-body" style={{ padding: '1.25rem', backgroundColor: '#f8f9fa' }}>
+          {hasInvoice && invoiceInfo && (
+            <div className="alert alert-info mb-3" style={{ borderRadius: '8px', backgroundColor: '#e7f3ff', borderColor: '#b3d9ff' }}>
+              <h6 className="alert-heading mb-2" style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                Invoice Details
+              </h6>
+              <div className="row g-2" style={{ fontSize: '0.8rem' }}>
+                <div className="col-md-6">
+                  <strong>Invoice ID:</strong> {invoiceInfo.stripeInvoiceId || 'N/A'}
+                </div>
+                <div className="col-md-6">
+                  <strong>Status:</strong> <span className={`badge ${invoiceInfo.is_paid ? 'bg-success' : 'bg-warning'} text-dark`}>{invoiceInfo.status}</span>
+                </div>
+                <div className="col-md-6">
+                  <strong>Amount Due:</strong> ${invoiceInfo.amount_due_in_dollars}
+                </div>
+                <div className="col-md-6">
+                  <strong>Created:</strong> {invoiceInfo.created_formatted}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="table-responsive">
+            <table className="table table-hover mb-0">
+              <thead style={{ backgroundColor: '#fff' }}>
+                <tr>
+                  <th style={{ fontSize: '0.875rem', fontWeight: 600, color: '#6c757d', borderBottom: '2px solid #dee2e6' }}>Student</th>
+                  <th style={{ fontSize: '0.875rem', fontWeight: 600, color: '#6c757d', borderBottom: '2px solid #dee2e6' }}>Present</th>
+                  <th style={{ fontSize: '0.875rem', fontWeight: 600, color: '#6c757d', borderBottom: '2px solid #dee2e6' }}>Homework</th>
+                  <th style={{ fontSize: '0.875rem', fontWeight: 600, color: '#6c757d', borderBottom: '2px solid #dee2e6' }}>Paid</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendances.map(att => {
+                  const student = studentsMap[att.tutoringStudent];
+                  return (
+                    <tr key={att.id}>
+                      <td style={{ fontSize: '0.875rem', verticalAlign: 'middle' }}>
+                        <div className="d-flex align-items-center">
+                          <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white me-2" 
+                               style={{ width: '32px', height: '32px', fontSize: '0.875rem', fontWeight: 600 }}>
+                            {student?.name?.[0]?.toUpperCase() || 'S'}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 500 }}>
+                              {student?.name || `Student ${att.tutoringStudent}`}
+                            </div>
+                            <small className="text-muted">ID: {att.tutoringStudent}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ verticalAlign: 'middle' }}>
+                        {att.present ? 
+                          <span className="badge bg-success">
+                            <i className="fas fa-check me-1"></i>
+                            Present
+                          </span> : 
+                          <span className="badge bg-danger">
+                            <i className="fas fa-times me-1"></i>
+                            Absent
+                          </span>
+                        }
+                      </td>
+                      <td style={{ verticalAlign: 'middle' }}>
+                        {att.homework ? 
+                          <span className="badge bg-success">
+                            <i className="fas fa-check me-1"></i>
+                            Done
+                          </span> : 
+                          <span className="badge bg-secondary">
+                            <i className="fas fa-times me-1"></i>
+                            Not Done
+                          </span>
+                        }
+                      </td>
+                      <td style={{ verticalAlign: 'middle' }}>
+                        {att.paid ? 
+                          <span className="badge bg-success">
+                            <i className="fas fa-check me-1"></i>
+                            Paid
+                          </span> : 
+                          <span className="badge bg-warning text-dark">
+                            <i className="fas fa-clock me-1"></i>
+                            Unpaid
+                          </span>
+                        }
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Main Component
+export default function AttendancePage() {
+  const [attendanceData, attendanceLoading, attendanceError] = useGetAllAttendances();
+  const [studentsData, studentsLoading, studentsError] = useGetAllStudents();
+  const [lessonsData, lessonsLoading, lessonsError] = useGetAllLessons();
+  const [groupsData, groupsLoading, groupsError] = useGetAllGroups();
+  
+  const [filters, setFilters] = useState({
+    invoiceStatus: 'all',
+    dateRange: 'all',
+    selectedStudent: 'all',
+    selectedGroup: 'all',
+    searchQuery: '',
+    customStartDate: '',
+    customEndDate: '',
+  });
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const getStatusBadge = (attendance) => {
-    if (attendance.paid) return <span className="badge bg-success">Paid</span>;
-    if (attendance.local_invoice) return <span className="badge bg-warning text-dark">Invoiced</span>;
-    if (attendance.present) return <span className="badge bg-info">Present</span>;
-    return <span className="badge bg-secondary">Pending</span>;
-  };
+  const studentsMap = useMemo(() => {
+    if (!studentsData) return {};
+    return studentsData.reduce((acc, student) => {
+      acc[student.id] = student;
+      return acc;
+    }, {});
+  }, [studentsData]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD'
-    }).format(amount / 100);
-  };
+  const lessonsMap = useMemo(() => {
+    if (!lessonsData) return {};
+    return lessonsData.reduce((acc, lesson) => {
+      acc[lesson.id] = lesson;
+      return acc;
+    }, {});
+  }, [lessonsData]);
 
-  const formatDate = (timestamp) => {
-    return new Date(timestamp * 1000).toLocaleDateString('en-AU', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  // Apply all filters
+  const filteredData = useMemo(() => {
+    if (!attendanceData) return [];
+    
+    let filtered = [...attendanceData];
+
+    // Invoice status filter
+    switch (filters.invoiceStatus) {
+      case 'invoiced':
+        filtered = filtered.filter(att => att.local_invoice !== null);
+        break;
+      case 'not-invoiced':
+        filtered = filtered.filter(att => att.local_invoice === null);
+        break;
+    }
+
+    // Student filter
+    if (filters.selectedStudent !== 'all') {
+      filtered = filtered.filter(att => att.tutoringStudent === parseInt(filters.selectedStudent));
+    }
+
+    // Group filter
+    if (filters.selectedGroup !== 'all') {
+      filtered = filtered.filter(att => {
+        const lesson = lessonsMap[att.lesson];
+        return lesson && lesson.group === parseInt(filters.selectedGroup);
+      });
+    }
+
+    // Date range filter
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(att => {
+        const lesson = lessonsMap[att.lesson];
+        if (!lesson || !lesson.date) return false;
+        
+        const lessonDate = new Date(lesson.date);
+        
+        switch (filters.dateRange) {
+          case 'today':
+            const lessonDay = new Date(lessonDate.getFullYear(), lessonDate.getMonth(), lessonDate.getDate());
+            return lessonDay.getTime() === today.getTime();
+          case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return lessonDate >= weekAgo && lessonDate <= now;
+          case 'month':
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return lessonDate >= monthAgo && lessonDate <= now;
+          case 'custom':
+            if (filters.customStartDate && filters.customEndDate) {
+              const start = new Date(filters.customStartDate);
+              const end = new Date(filters.customEndDate);
+              end.setHours(23, 59, 59, 999);
+              return lessonDate >= start && lessonDate <= end;
+            }
+            return true;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Search filter
+    if (filters.searchQuery) {
+      filtered = filtered.filter(att => 
+        att.lesson.toString().includes(filters.searchQuery)
+      );
+    }
+
+    return filtered;
+  }, [attendanceData, filters, lessonsMap]);
+
+  const stats = useMemo(() => {
+    if (!filteredData) return { total: 0, invoiced: 0, notInvoiced: 0, uniqueLessons: 0 };
+    
+    return {
+      total: filteredData.length,
+      invoiced: filteredData.filter(att => att.local_invoice !== null).length,
+      notInvoiced: filteredData.filter(att => att.local_invoice === null).length,
+      uniqueLessons: new Set(filteredData.map(att => att.lesson)).size,
+    };
+  }, [filteredData]);
+
+  const groupedAttendances = useMemo(() => {
+    return groupByLesson(filteredData);
+  }, [filteredData]);
+
+  const sortedLessonIds = useMemo(() => {
+    return Object.keys(groupedAttendances).sort((a, b) => Number(b) - Number(a));
+  }, [groupedAttendances]);
+
+  const loading = attendanceLoading || studentsLoading || lessonsLoading || groupsLoading;
+  const error = attendanceError || studentsError || lessonsError || groupsError;
 
   if (loading) {
     return (
       <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-          <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+          <div className="spinner-border" style={{ color: '#004aad', width: '3rem', height: '3rem' }} role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
         </div>
@@ -72,9 +586,9 @@ export default function AttendancePage() {
   if (error) {
     return (
       <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-        <div className="alert alert-danger" role="alert" data-cy="error-alert">
-          <h4 className="alert-heading">Error Loading Attendances</h4>
-          <p>{error.message || 'An error occurred while loading attendance data.'}</p>
+        <div className="alert alert-danger" role="alert">
+          <h4 className="alert-heading">Error Loading Data</h4>
+          <p>{error.message || 'An error occurred while loading data.'}</p>
         </div>
       </div>
     );
@@ -82,382 +596,39 @@ export default function AttendancePage() {
 
   return (
     <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      {/* Header */}
-      <div className="row mb-3">
-        <div className="col">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <h1 className="h4 mb-1" data-cy="page-title">
-                <i className="bi bi-calendar-check me-2"></i>
-                Attendance Management
-              </h1>
-              <p className="text-muted mb-0 small">Track student attendance, homework, and payments</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="row mb-3">
-        <div className="col">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label small text-muted text-uppercase mb-1">Filter by Student</label>
-                  <select 
-                    className="form-select" 
-                    value={filterStudent}
-                    onChange={(e) => setFilterStudent(e.target.value)}
-                    data-cy="student-filter"
-                  >
-                    <option value="all">All Students</option>
-                    {uniqueStudents.map(studentId => (
-                      <option key={studentId} value={studentId}>Student {studentId}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label small text-muted text-uppercase mb-1">Filter by Lesson</label>
-                  <select 
-                    className="form-select"
-                    value={filterLesson}
-                    onChange={(e) => setFilterLesson(e.target.value)}
-                    data-cy="lesson-filter"
-                  >
-                    <option value="all">All Lessons</option>
-                    {uniqueLessons.sort((a, b) => a - b).map(lessonId => (
-                      <option key={lessonId} value={lessonId}>Lesson {lessonId}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="row g-3 mb-3">
-        <div className="col-lg-3 col-md-6">
-          <div className="card border-0 shadow-sm h-100" data-cy="total-attendances-card">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <p className="text-muted text-uppercase mb-1 small fw-semibold">Total Records</p>
-                  <h3 className="mb-0">{filteredData.length}</h3>
-                </div>
-                <div className="bg-primary bg-opacity-10 rounded p-3">
-                  <i className="bi bi-journal-text text-primary fs-4"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-3 col-md-6">
-          <div className="card border-0 shadow-sm h-100" data-cy="present-card">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <p className="text-muted text-uppercase mb-1 small fw-semibold">Present</p>
-                  <h3 className="mb-0">{filteredData.filter(a => a.present).length}</h3>
-                </div>
-                <div className="bg-success bg-opacity-10 rounded p-3">
-                  <i className="bi bi-check-circle text-success fs-4"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-3 col-md-6">
-          <div className="card border-0 shadow-sm h-100" data-cy="paid-card">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <p className="text-muted text-uppercase mb-1 small fw-semibold">Paid</p>
-                  <h3 className="mb-0">{filteredData.filter(a => a.paid).length}</h3>
-                </div>
-                <div className="bg-info bg-opacity-10 rounded p-3">
-                  <i className="bi bi-currency-dollar text-info fs-4"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-3 col-md-6">
-          <div className="card border-0 shadow-sm h-100" data-cy="homework-card">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <p className="text-muted text-uppercase mb-1 small fw-semibold">Homework Done</p>
-                  <h3 className="mb-0">{filteredData.filter(a => a.homework).length}</h3>
-                </div>
-                <div className="bg-warning bg-opacity-10 rounded p-3">
-                  <i className="bi bi-book text-warning fs-4"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Attendance Table */}
+      <AttendanceHeader stats={stats} filters={filters} onFilterChange={handleFilterChange} />
+      <AdvancedFilters 
+        filters={filters} 
+        onFilterChange={handleFilterChange}
+        students={studentsData}
+        groups={groupsData}
+        lessons={lessonsData}
+      />
+      <StatsCards stats={stats} />
+      
       <div className="row">
-        <div className="col">
-          <div className="card border-0 shadow-sm">
-            <div className="card-header bg-white border-0 py-3">
-              <h5 className="mb-0">Attendance Records</h5>
-            </div>
-            <div className="card-body p-0">
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0" data-cy="attendance-table">
-                  <thead className="table-light">
-                    <tr>
-                      <th className="px-3 py-3 small text-muted text-uppercase fw-semibold">ID</th>
-                      <th className="py-3 small text-muted text-uppercase fw-semibold">Lesson</th>
-                      <th className="py-3 small text-muted text-uppercase fw-semibold">Student</th>
-                      <th className="py-3 text-center small text-muted text-uppercase fw-semibold">Present</th>
-                      <th className="py-3 text-center small text-muted text-uppercase fw-semibold">Homework</th>
-                      <th className="py-3 text-center small text-muted text-uppercase fw-semibold">Status</th>
-                      <th className="py-3 text-center small text-muted text-uppercase fw-semibold">Invoice</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredData.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" className="text-center py-5 text-muted">
-                          <i className="bi bi-inbox d-block mb-2" style={{ fontSize: '3rem', opacity: 0.3 }}></i>
-                          <p className="mb-0">No attendance records found</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredData.map((attendance) => (
-                        <tr key={attendance.id} data-cy={`attendance-row-${attendance.id}`}>
-                          <td className="px-3">
-                            <span className="badge bg-light text-dark">{attendance.id}</span>
-                          </td>
-                          <td>
-                            <span>Lesson {attendance.lesson}</span>
-                          </td>
-                          <td>
-                            <span className="text-muted">Student {attendance.tutoringStudent}</span>
-                          </td>
-                          <td className="text-center">
-                            {attendance.present ? (
-                              <i className="bi bi-check-circle-fill text-success fs-5"></i>
-                            ) : (
-                              <i className="bi bi-x-circle text-muted fs-5"></i>
-                            )}
-                          </td>
-                          <td className="text-center">
-                            {attendance.homework ? (
-                              <i className="bi bi-check-circle-fill text-success fs-5"></i>
-                            ) : (
-                              <i className="bi bi-x-circle text-muted fs-5"></i>
-                            )}
-                          </td>
-                          <td className="text-center">
-                            {getStatusBadge(attendance)}
-                          </td>
-                          <td className="text-center">
-                            {attendance.local_invoice ? (
-                              <button
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={() => handleViewInvoice(attendance.local_invoice)}
-                                data-cy={`view-invoice-${attendance.id}`}
-                              >
-                                <i className="bi bi-receipt me-1"></i>
-                                View
-                              </button>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+        <div className="col-12">
+          {sortedLessonIds.length > 0 ? (
+            sortedLessonIds.map(lessonId => (
+              <LessonCard 
+                key={lessonId}
+                lessonId={lessonId}
+                attendances={groupedAttendances[lessonId]}
+                studentsMap={studentsMap}
+                lessonsMap={lessonsMap}
+              />
+            ))
+          ) : (
+            <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
+              <div className="card-body text-center py-5">
+                <i className="fas fa-inbox" style={{ fontSize: '3rem', color: '#6c757d' }}></i>
+                <h5 className="mt-3 mb-2" style={{ color: '#6c757d' }}>No Attendances Found</h5>
+                <p className="text-muted">Try adjusting your filters to see more results.</p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
-
-      {/* Invoice Modal */}
-      {showInvoiceModal && selectedInvoice && (
-        <div 
-          className="modal fade show d-block" 
-          tabIndex="-1" 
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          data-cy="invoice-modal"
-        >
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header border-0">
-                <h5 className="modal-title">
-                  <i className="bi bi-receipt me-2"></i>
-                  Invoice Details
-                </h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setShowInvoiceModal(false)}
-                  data-cy="close-invoice-modal"
-                ></button>
-              </div>
-              <div className="modal-body">
-                {selectedInvoice.get_stripe_invoice ? (
-                  <>
-                    {/* Invoice Header */}
-                    <div className="card bg-light border-0 mb-3">
-                      <div className="card-body">
-                        <div className="row">
-                          <div className="col-md-6 mb-3">
-                            <p className="text-muted text-uppercase small mb-1 fw-semibold">Invoice Number</p>
-                            <p className="mb-0">{selectedInvoice.get_stripe_invoice.number}</p>
-                          </div>
-                          <div className="col-md-6 mb-3">
-                            <p className="text-muted text-uppercase small mb-1 fw-semibold">Status</p>
-                            <p className="mb-0">
-                              <span className={`badge ${
-                                selectedInvoice.get_stripe_invoice.status === 'paid' ? 'bg-success' :
-                                selectedInvoice.get_stripe_invoice.status === 'open' ? 'bg-warning text-dark' :
-                                'bg-secondary'
-                              }`}>
-                                {selectedInvoice.get_stripe_invoice.status.toUpperCase()}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                        <div className="row">
-                          <div className="col-md-6 mb-3">
-                            <p className="text-muted text-uppercase small mb-1 fw-semibold">Customer</p>
-                            <p className="mb-1">{selectedInvoice.get_stripe_invoice.customer_name}</p>
-                            <p className="text-muted small mb-0">{selectedInvoice.get_stripe_invoice.customer_email}</p>
-                          </div>
-                          <div className="col-md-6 mb-3">
-                            <p className="text-muted text-uppercase small mb-1 fw-semibold">Created</p>
-                            <p className="mb-0">{formatDate(selectedInvoice.get_stripe_invoice.created)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Custom Fields */}
-                    {selectedInvoice.get_stripe_invoice.custom_fields && (
-                      <div className="mb-3">
-                        <h6 className="mb-2">Billing Information</h6>
-                        {selectedInvoice.get_stripe_invoice.custom_fields.map((field, idx) => (
-                          <div key={idx} className="d-flex justify-content-between py-2 border-bottom">
-                            <span className="text-muted small">{field.name}</span>
-                            <span>{field.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Line Items */}
-                    <div className="mb-3">
-                      <h6 className="mb-2">Line Items</h6>
-                      <div className="table-responsive">
-                        <table className="table table-sm">
-                          <thead className="table-light">
-                            <tr>
-                              <th className="small text-muted text-uppercase fw-semibold">Description</th>
-                              <th className="text-center small text-muted text-uppercase fw-semibold">Quantity</th>
-                              <th className="text-end small text-muted text-uppercase fw-semibold">Unit Price</th>
-                              <th className="text-end small text-muted text-uppercase fw-semibold">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedInvoice.get_stripe_invoice.lines.data.map((line) => (
-                              <tr key={line.id}>
-                                <td>{line.description}</td>
-                                <td className="text-center">{line.quantity}</td>
-                                <td className="text-end">{formatCurrency(parseInt(line.pricing.unit_amount_decimal))}</td>
-                                <td className="text-end">{formatCurrency(line.amount)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Totals */}
-                    <div className="card bg-primary bg-opacity-10 border-0">
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Subtotal</span>
-                          <span>{formatCurrency(selectedInvoice.get_stripe_invoice.subtotal)}</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Tax</span>
-                          <span>{formatCurrency(selectedInvoice.get_stripe_invoice.total - selectedInvoice.get_stripe_invoice.subtotal)}</span>
-                        </div>
-                        <div className="d-flex justify-content-between pt-2 border-top">
-                          <span className="h5 mb-0">Total</span>
-                          <span className="h5 mb-0 text-primary">{formatCurrency(selectedInvoice.get_stripe_invoice.total)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Info */}
-                    {selectedInvoice.get_stripe_invoice.due_date && (
-                      <div className="alert alert-info mt-3 mb-0" role="alert">
-                        <i className="bi bi-info-circle me-2"></i>
-                        <strong>Due Date:</strong> {formatDate(selectedInvoice.get_stripe_invoice.due_date)}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-5">
-                    <p className="text-muted">No invoice details available</p>
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer border-0">
-                {selectedInvoice.get_stripe_invoice?.hosted_invoice_url && (
-                  <a
-                    href={selectedInvoice.get_stripe_invoice.hosted_invoice_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline-primary"
-                    data-cy="view-stripe-invoice"
-                  >
-                    <i className="bi bi-box-arrow-up-right me-2"></i>
-                    View on Stripe
-                  </a>
-                )}
-                {selectedInvoice.get_stripe_invoice?.invoice_pdf && (
-                  <a
-                    href={selectedInvoice.get_stripe_invoice.invoice_pdf}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-primary"
-                    data-cy="download-pdf"
-                  >
-                    <i className="bi bi-download me-2"></i>
-                    Download PDF
-                  </a>
-                )}
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setShowInvoiceModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @import url('https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
-        @import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css');
-      `}</style>
     </div>
   );
 }

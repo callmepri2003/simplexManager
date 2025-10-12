@@ -3,7 +3,7 @@ import stripe
 import os
 from dotenv import load_dotenv
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from django.db.models import Q
 load_dotenv()
 
@@ -33,7 +33,7 @@ def generateInvoices(*, frequency, amount_of_weeks):
     logger.debug("Stripe API key loaded successfully")
     
     # Calculate billing period
-    period_start = datetime.now()
+    period_start = datetime.now(timezone.utc)
     period_end = period_start + timedelta(weeks=amount_of_weeks)
     
     logger.info(f"Billing period: {period_start.date()} to {period_end.date()}")
@@ -96,20 +96,16 @@ def generateInvoices(*, frequency, amount_of_weeks):
             
             logger.info(f"Created Stripe invoice {invoice.id} for parent {parent.name}")
             
-            # Create LocalInvoice as a lightweight reference to Stripe invoice
-            local_invoice = LocalInvoice.objects.create(
-                stripeInvoiceId=invoice.id
-            )
-            
-            logger.debug(f"Created LocalInvoice {local_invoice.id} referencing Stripe invoice {invoice.id}")
+            # NOTE: We don't create LocalInvoice here anymore!
+            # The webhook (invoice.created) will handle creating the LocalInvoice
+            # We just need to wait a moment for the webhook to process
+            logger.debug(f"Waiting for webhook to create LocalInvoice for Stripe invoice {invoice.id}")
             
             # Group attendances by product for invoice items
             product_quantities = {}
             attendance_list = []
             
             for attendance in all_attendances:
-                # Link attendance to local invoice
-                attendance.local_invoice = local_invoice
                 attendance_list.append(attendance)
                 
                 # Get the product from the group
@@ -133,9 +129,6 @@ def generateInvoices(*, frequency, amount_of_weeks):
                 product_quantities[product.id]['quantity'] += lesson_length
                 product_quantities[product.id]['student_names'].add(attendance.tutoringStudent.name)
             
-            # Bulk update attendances with local_invoice reference
-            Attendance.objects.bulk_update(attendance_list, ['local_invoice'])
-            
             # Create invoice items in Stripe
             for product_data in product_quantities.values():
                 product = product_data['product']
@@ -157,11 +150,38 @@ def generateInvoices(*, frequency, amount_of_weeks):
                     invoice=invoice.id
                 )
             
-            # Finalize the invoice
+            # Finalize the invoice (this will trigger invoice.finalized webhook)
             finalized_invoice = stripe.Invoice.finalize_invoice(invoice.id)
             
             logger.info(f"Successfully created and finalized invoice {invoice.id} for parent {parent.name} "
                        f"with {len(all_attendances)} attendances totaling ${finalized_invoice.total / 100}")
+            
+            # Now link attendances to the LocalInvoice
+            # We need to wait for the webhook to create the LocalInvoice first
+            # In production, you might want to use a retry mechanism or celery task
+            # For now, we'll try to get it with a simple retry
+            local_invoice = None
+            for attempt in range(3):
+                try:
+                    local_invoice = LocalInvoice.objects.get(stripeInvoiceId=invoice.id)
+                    logger.debug(f"Found LocalInvoice {local_invoice.id} for Stripe invoice {invoice.id}")
+                    break
+                except LocalInvoice.DoesNotExist:
+                    if attempt < 2:
+                        logger.debug(f"LocalInvoice not found yet (attempt {attempt + 1}/3), waiting...")
+                        import time
+                        time.sleep(1)  # Wait 1 second before retry
+                    else:
+                        logger.warning(f"LocalInvoice not found after 3 attempts for Stripe invoice {invoice.id}")
+            
+            # Link attendances to local invoice if found
+            if local_invoice:
+                for attendance in attendance_list:
+                    attendance.local_invoice = local_invoice
+                Attendance.objects.bulk_update(attendance_list, ['local_invoice'])
+                logger.debug(f"Linked {len(attendance_list)} attendances to LocalInvoice {local_invoice.id}")
+            else:
+                logger.error(f"Could not link attendances - LocalInvoice not created for {invoice.id}")
             
         except stripe.error.StripeError as e:
             logger.error(f"Failed to create invoice for parent {parent.name}: {str(e)}")

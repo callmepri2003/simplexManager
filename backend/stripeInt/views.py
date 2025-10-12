@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from abc import ABC, abstractmethod
@@ -5,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 import os
 from dotenv import load_dotenv
 import stripe
-from tutoring.models import Parent
+from tutoring.models import LocalInvoice, Parent
 from .models import StripeProd
 import logging
 from django.db import connection
@@ -55,6 +56,18 @@ def webhooks_view(request):
         webhookHandler = UpdatePriceHandler()
     elif event['type'] == 'price.deleted':
         webhookHandler = DeletePriceHandler()
+    elif event['type'] == 'invoice.created':
+        webhookHandler = CreateInvoiceHandler()
+    elif event['type'] == 'invoice.updated':
+        webhookHandler = UpdateInvoiceHandler()
+    elif event['type'] == 'invoice.paid':
+        webhookHandler = InvoicePaidHandler()
+    elif event['type'] == 'invoice.payment_succeeded':
+        webhookHandler = InvoicePaymentSucceededHandler()
+    elif event['type'] == 'invoice.voided':
+        webhookHandler = InvoiceVoidedHandler()
+    elif event['type'] == 'invoice.deleted':
+        webhookHandler = DeleteInvoiceHandler()
     else:
         logger.warning(f"Unhandled webhook event type: {event['type']}")
         return HttpResponse(status=404)
@@ -146,3 +159,116 @@ class DeletePriceHandler(WebhookHandler):
         except StripeProd.DoesNotExist:
             logger.info(f"Price {data['id']} was not a default price for any product")
             pass
+
+class CreateInvoiceHandler(WebhookHandler):
+    def handle(self, data):
+        logger.info(f"Creating invoice: {data['id']}")
+        
+        # Only create if it's not a draft or if it has an ID
+        if data.get('id'):
+            LocalInvoice.objects.update_or_create(
+                stripeInvoiceId=data['id'],
+                defaults={
+                    'status': data['status'],
+                    'amount_due': data['amount_due'],
+                    'amount_paid': data['amount_paid'],
+                    'currency': data['currency'],
+                    'created': datetime.fromtimestamp(data['created'], tz=timezone.utc),
+                    'status_transitions_paid_at': (
+                        datetime.fromtimestamp(data['status_transitions']['paid_at'], tz=timezone.utc)
+                        if data['status_transitions'].get('paid_at') else None
+                    ),
+                    'customer_stripe_id': data.get('customer'),
+                }
+            )
+            logger.info(f"Invoice created successfully: {data['id']}")
+
+class UpdateInvoiceHandler(WebhookHandler):
+    def handle(self, data):
+        logger.info(f"Updating invoice: {data['id']}")
+        
+        try:
+            invoice = LocalInvoice.objects.get(stripeInvoiceId=data['id'])
+            invoice.status = data['status']
+            invoice.amount_due = data['amount_due']
+            invoice.amount_paid = data['amount_paid']
+            invoice.status_transitions_paid_at = (
+                datetime.fromtimestamp(data['status_transitions']['paid_at'], tz=timezone.utc)
+                if data['status_transitions'].get('paid_at') else None
+            )
+            invoice.save()
+            logger.info(f"Invoice updated successfully: {data['id']}")
+        except LocalInvoice.DoesNotExist:
+            # If invoice doesn't exist, create it
+            logger.warning(f"Invoice {data['id']} not found, creating it")
+            CreateInvoiceHandler().handle(data)
+
+class InvoicePaidHandler(WebhookHandler):
+    def handle(self, data):
+        logger.info(f"Invoice paid: {data['id']}")
+        UpdateInvoiceHandler().handle(data)
+
+class InvoicePaymentSucceededHandler(WebhookHandler):
+    def handle(self, data):
+        logger.info(f"Invoice payment succeeded: {data['id']}")
+        UpdateInvoiceHandler().handle(data)
+
+class InvoiceVoidedHandler(WebhookHandler):
+    def handle(self, data):
+        logger.info(f"Invoice voided: {data['id']}")
+        
+        try:
+            invoice = LocalInvoice.objects.get(stripeInvoiceId=data['id'])
+            
+            print(data)
+            # Check if this invoice was replaced by a new one
+            if data.get('replaced_by'):
+                logger.info(f"Invoice {data['id']} was replaced by {data['replaced_by']}")
+                
+                # Option 1: Mark the old invoice as voided and fetch the new one
+                invoice.status = 'void'
+                invoice.save()
+                
+                # Fetch the replacement invoice from Stripe
+                try:
+                    stripe_invoice = stripe.Invoice.retrieve(data['replaced_by'])
+                    
+                    # Create or update the replacement invoice
+                    LocalInvoice.objects.update_or_create(
+                        stripeInvoiceId=stripe_invoice['id'],
+                        defaults={
+                            'status': stripe_invoice['status'],
+                            'amount_due': stripe_invoice['amount_due'],
+                            'amount_paid': stripe_invoice['amount_paid'],
+                            'currency': stripe_invoice['currency'],
+                            'created': datetime.fromtimestamp(stripe_invoice['created'], tz=timezone.utc),
+                            'status_transitions_paid_at': (
+                                datetime.fromtimestamp(stripe_invoice['status_transitions']['paid_at'], tz=timezone.utc)
+                                if stripe_invoice['status_transitions'].get('paid_at') else None
+                            ),
+                            'customer_stripe_id': stripe_invoice.get('customer'),
+                        }
+                    )
+                    logger.info(f"Replacement invoice {data['replaced_by']} created/updated successfully")
+                except stripe.error.StripeError as e:
+                    logger.error(f"Failed to fetch replacement invoice {data['replaced_by']}: {e}")
+            else:
+                # Just a regular void without replacement
+                invoice.status = 'void'
+                invoice.save()
+                logger.info(f"Invoice voided successfully: {data['id']}")
+                
+        except LocalInvoice.DoesNotExist:
+            logger.warning(f"Invoice {data['id']} not found for voiding")
+            # Still create it as voided for record keeping
+            CreateInvoiceHandler().handle(data)
+
+class DeleteInvoiceHandler(WebhookHandler):
+    def handle(self, data):
+        logger.info(f"Deleting invoice: {data['id']}")
+        try:
+            invoice = LocalInvoice.objects.get(stripeInvoiceId=data['id'])
+            invoice.delete()  # Or set is_active = False if you want soft deletes
+            logger.info(f"Invoice deleted successfully: {data['id']}")
+        except LocalInvoice.DoesNotExist:
+            logger.warning(f"Invoice {data['id']} not found for deletion")
