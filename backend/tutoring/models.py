@@ -115,6 +115,8 @@ class Lesson(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons")
     notes = models.CharField(max_length=100, null=True, blank=True)
     date = models.DateTimeField()
+    term = models.ForeignKey("TutoringTerm", on_delete=models.PROTECT, related_name='lessons', null=True, blank=True)
+
 
     def __str__(self):
         return f"Lesson {self.id} - {self.notes or 'No notes'}"
@@ -190,3 +192,47 @@ class TutoringStudent(models.Model):
 
   def __str__(self):
       return self.name
+
+class TutoringYear(models.Model):
+    index = models.IntegerField()
+
+    def __str__(self):
+        return str(self.index)
+
+class TutoringTerm(models.Model):
+    index = models.IntegerField()
+    year = models.ForeignKey(TutoringYear, on_delete=models.CASCADE, related_name="weeks")
+    previousTerm = models.ForeignKey(
+        "self",  # self-referential
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL,
+        related_name="next_term",
+        help_text="The term immediately before this term"
+    )
+    
+    def amountOfEnrolments(self):
+        """
+        Returns the number of unique tutoring students who attended at least
+        one lesson in this term.
+        """
+        enrolments = set()  # use a set to ensure uniqueness
+
+        # loop through all lessons in this term
+        for lesson in self.lessons.all():
+            # loop through all attendances of the lesson
+            for attendance in lesson.attendances.all():
+                enrolments.add(attendance.tutoringStudent_id)  # store student ID to avoid duplicates
+
+        return len(enrolments)
+
+    def __str__(self):
+        return f"{self.year}T{self.index}"
+
+class TutoringWeek(models.Model):
+    index = models.IntegerField()
+    term = models.ForeignKey(TutoringTerm, on_delete=models.CASCADE, related_name="weeks")
+
+    def __str__(self):
+        return f"{self.term}W{self.index}"
+

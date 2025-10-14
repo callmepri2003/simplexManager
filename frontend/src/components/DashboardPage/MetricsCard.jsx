@@ -6,15 +6,15 @@ export default function MetricsCards({ data }) {
       <div className="col-md-3">
         <MetricCard
           title="Total Students"
-          value={data.totalStudents.value}
-          change={data.totalStudents.change}
-          trend={data.totalStudents.trend}
+          value={data.amountOfEnrolments.amountOfEnrolments}
+          change={data.amountOfEnrolments.change}
+          trend={data.amountOfEnrolments.trend}
           icon="bi-people-fill"
           color="#004aad"
           bgColor="#e7f1ff"
         />
       </div>
-      <div className="col-md-3">
+      {/* <div className="col-md-3">
         <MetricCard
           title="Avg Attendance"
           value={`${data.avgAttendance.value}%`}
@@ -35,8 +35,8 @@ export default function MetricsCards({ data }) {
           color="#17a2b8"
           bgColor="#d1ecf1"
         />
-      </div>
-      <div className="col-md-3">
+      </div> */}
+      {/* <div className="col-md-3">
         <MetricCard
           title="Payment Rate"
           value={`${data.paymentRate.value}%`}
@@ -46,7 +46,7 @@ export default function MetricsCards({ data }) {
           color="#6c757d"
           bgColor="#e9ecef"
         />
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -25,7 +25,7 @@ class AttendanceInline(admin.TabularInline):
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ["group", "notes", "date"]
+    list_display = ["group", "notes", "date", "term"]
     inlines = [ResourceInline, AttendanceInline]
 
 @admin.register(Attendance)
@@ -146,6 +146,40 @@ class LocalInvoiceAdmin(admin.ModelAdmin):
                 return
         
         super().save_model(request, obj, form, change)
+
+# Inline for TutoringWeek inside TutoringTerm
+class TutoringWeekInline(admin.TabularInline):
+    model = TutoringWeek
+    extra = 1  # Number of empty forms to show
+    min_num = 1
+    verbose_name = "Week"
+    verbose_name_plural = "Weeks"
+
+# Inline for TutoringTerm inside TutoringYear
+class TutoringTermInline(admin.StackedInline):
+    model = TutoringTerm
+    extra = 1
+    min_num = 1
+    verbose_name = "Term"
+    verbose_name_plural = "Terms"
+    inlines = [TutoringWeekInline]  # Nested inlines require 3rd party packages
+
+# Admin for TutoringYear
+@admin.register(TutoringYear)
+class TutoringYearAdmin(admin.ModelAdmin):
+    list_display = ("index",)
+    inlines = [TutoringTermInline]
+
+# Optional: register TutoringTerm separately if needed
+@admin.register(TutoringTerm)
+class TutoringTermAdmin(admin.ModelAdmin):
+    list_display = ("index", "year")
+    inlines = [TutoringWeekInline]
+
+# Optional: register TutoringWeek separately
+@admin.register(TutoringWeek)
+class TutoringWeekAdmin(admin.ModelAdmin):
+    list_display = ("index", "term")
 
 # Register other models normally
 admin.site.register(Group)
