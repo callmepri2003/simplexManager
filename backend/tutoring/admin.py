@@ -23,11 +23,6 @@ class AttendanceInline(admin.TabularInline):
             kwargs["queryset"] = LocalInvoice.objects.all()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-@admin.register(Lesson)
-class LessonAdmin(admin.ModelAdmin):
-    list_display = ["group", "notes", "date", "term"]
-    inlines = [ResourceInline, AttendanceInline]
-
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
     list_display = ['lesson', 'tutoringStudent', 'present', 'homework', 'paid', 'get_invoice_info']
@@ -147,13 +142,23 @@ class LocalInvoiceAdmin(admin.ModelAdmin):
         
         super().save_model(request, obj, form, change)
 
+# Inline for Lessons inside TutoringWeek
+class LessonInline(admin.TabularInline):
+    model = Lesson
+    extra = 1
+    verbose_name = "Lesson"
+    verbose_name_plural = "Lessons"
+
+
 # Inline for TutoringWeek inside TutoringTerm
 class TutoringWeekInline(admin.TabularInline):
     model = TutoringWeek
-    extra = 1  # Number of empty forms to show
+    extra = 1
     min_num = 1
     verbose_name = "Week"
     verbose_name_plural = "Weeks"
+    show_change_link = True
+
 
 # Inline for TutoringTerm inside TutoringYear
 class TutoringTermInline(admin.StackedInline):
@@ -162,7 +167,8 @@ class TutoringTermInline(admin.StackedInline):
     min_num = 1
     verbose_name = "Term"
     verbose_name_plural = "Terms"
-    inlines = [TutoringWeekInline]  # Nested inlines require 3rd party packages
+    show_change_link = True
+
 
 # Admin for TutoringYear
 @admin.register(TutoringYear)
@@ -170,16 +176,31 @@ class TutoringYearAdmin(admin.ModelAdmin):
     list_display = ("index",)
     inlines = [TutoringTermInline]
 
-# Optional: register TutoringTerm separately if needed
+
+# Admin for TutoringTerm
 @admin.register(TutoringTerm)
 class TutoringTermAdmin(admin.ModelAdmin):
-    list_display = ("index", "year")
+    list_display = ("index", "year", "previousTerm")
     inlines = [TutoringWeekInline]
 
-# Optional: register TutoringWeek separately
+
+# Admin for TutoringWeek
 @admin.register(TutoringWeek)
 class TutoringWeekAdmin(admin.ModelAdmin):
     list_display = ("index", "term")
+    inlines = [LessonInline]
+
+
+# Admin for Lesson
+@admin.register(Lesson)
+class LessonAdmin(admin.ModelAdmin):
+    list_display = ["group", "notes", "date", "tutoringWeek", "get_term"]
+    list_select_related = ["tutoringWeek__term"]
+    search_fields = ["group__course", "notes"]
+
+    def get_term(self, obj):
+        return obj.tutoringWeek.term if obj.tutoringWeek else None
+    get_term.short_description = "Term"
 
 # Register other models normally
 admin.site.register(Group)

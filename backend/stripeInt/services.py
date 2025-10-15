@@ -1,4 +1,4 @@
-from tutoring.models import Parent, LocalInvoice, Attendance, Lesson
+from tutoring.models import Parent, LocalInvoice, Attendance, Lesson, TutoringWeek, TutoringTerm
 import stripe
 import os
 from dotenv import load_dotenv
@@ -10,18 +10,18 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 def generateWeeklyInvoices():
-    generateInvoices(frequency="weekly", amount_of_weeks=1)
+    generateInvoices(frequency="weekly", weeks_to_include=1)
 
 def generateFortnightlyInvoices():
-    generateInvoices(frequency="fortnightly", amount_of_weeks=2)
+    generateInvoices(frequency="fortnightly", weeks_to_include=2)
 
 def generateHalfTermlyInvoices():
-    generateInvoices(frequency="half-termly", amount_of_weeks=5)
+    generateInvoices(frequency="half-termly", weeks_to_include=5)
 
 def generateTermlyInvoices():
-    generateInvoices(frequency="termly", amount_of_weeks=10)
+    generateInvoices(frequency="termly", weeks_to_include=10)
 
-def generateInvoices(*, frequency, amount_of_weeks):
+def generateInvoices(*, frequency, weeks_to_include):
     logger.info(f"Starting {frequency} invoice generation")
     
     # Set up Stripe API key
@@ -31,12 +31,6 @@ def generateInvoices(*, frequency, amount_of_weeks):
         return
     
     logger.debug("Stripe API key loaded successfully")
-    
-    # Calculate billing period
-    period_start = datetime.now(timezone.utc)
-    period_end = period_start + timedelta(weeks=amount_of_weeks)
-    
-    logger.info(f"Billing period: {period_start.date()} to {period_end.date()}")
     
     # Get all parents with matching payment frequency
     parents = Parent.objects.filter(payment_frequency=frequency, is_active=True)
@@ -53,19 +47,18 @@ def generateInvoices(*, frequency, amount_of_weeks):
             logger.warning(f"Parent {parent.name} has no active children, skipping")
             continue
         
-        # Collect all attendances for all children in this billing period
+        # Collect all attendances for all children across the specified weeks
         all_attendances = []
         
         for child in children:
             logger.debug(f"Processing child: {child.name} (ID: {child.id})")
             
-            # Get attendances for this child in the billing period
+            # Get attendances for this child from lessons in the specified weeks
             attendances = Attendance.objects.filter(
                 tutoringStudent=child,
-                lesson__date__gte=period_start,
-                lesson__date__lt=period_end,
+                lesson__tutoringWeek__isnull=False,  # Must have a week assigned
                 paid=False  # Only invoice unpaid attendances
-            ).select_related('lesson', 'lesson__group', 'lesson__group__associated_product')
+            ).select_related('lesson', 'lesson__group', 'lesson__group__associated_product', 'lesson__tutoringWeek')
             
             logger.debug(f"Found {attendances.count()} unpaid attendances for {child.name}")
             all_attendances.extend(attendances)
@@ -81,11 +74,11 @@ def generateInvoices(*, frequency, amount_of_weeks):
                 customer=parent.stripeId,
                 auto_advance=True,
                 collection_method="send_invoice",
-                days_until_due=amount_of_weeks * 7,
+                days_until_due=weeks_to_include * 7,
                 custom_fields=[
                     {
                         "name": "Billing Period",
-                        "value": calculate_billing_period(amount_of_weeks)
+                        "value": calculate_billing_period_from_weeks(weeks_to_include)
                     },
                     {
                         "name": "Payment Frequency",
@@ -95,11 +88,6 @@ def generateInvoices(*, frequency, amount_of_weeks):
             )
             
             logger.info(f"Created Stripe invoice {invoice.id} for parent {parent.name}")
-            
-            # NOTE: We don't create LocalInvoice here anymore!
-            # The webhook (invoice.created) will handle creating the LocalInvoice
-            # We just need to wait a moment for the webhook to process
-            logger.debug(f"Waiting for webhook to create LocalInvoice for Stripe invoice {invoice.id}")
             
             # Group attendances by product for invoice items
             product_quantities = {}
@@ -192,26 +180,17 @@ def generateInvoices(*, frequency, amount_of_weeks):
     
     logger.info(f"Completed {frequency} invoice generation")
 
-def calculate_billing_period(amount_of_weeks):
+def calculate_billing_period_from_weeks(weeks_count):
     """
-    Calculate human-readable billing period from today to today + amount_of_weeks (exclusive end date)
+    Calculate human-readable billing period for a given number of weeks.
     
     Args:
-        amount_of_weeks (int): Number of weeks for the billing period
+        weeks_count (int): Number of weeks for the billing period
         
     Returns:
-        str: Formatted billing period (e.g., "Monday 19th July to Sunday 1st August")
+        str: Formatted billing period (e.g., "Weeks 1-2" or "Weeks 1-5")
     """
-    start_date = datetime.now()
-    end_date = start_date + timedelta(weeks=amount_of_weeks, days=-1)
-    
-    def get_ordinal_suffix(day):
-        if 10 <= day % 100 <= 20:
-            return "th"
-        else:
-            return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-    
-    start_formatted = start_date.strftime(f"%A %d{get_ordinal_suffix(start_date.day)} %B")
-    end_formatted = end_date.strftime(f"%A %d{get_ordinal_suffix(end_date.day)} %B")
-    
-    return f"{start_formatted} to {end_formatted}"
+    if weeks_count == 1:
+        return "1 week"
+    else:
+        return f"{weeks_count} weeks"

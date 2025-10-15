@@ -14,28 +14,28 @@ export default function MetricsCards({ data }) {
           bgColor="#e7f1ff"
         />
       </div>
-      {/* <div className="col-md-3">
+      <div className="col-md-3">
         <MetricCard
           title="Avg Attendance"
-          value={`${data.avgAttendance.value}%`}
-          change={data.avgAttendance.change}
-          trend={data.avgAttendance.trend}
+          value={`${data.attendanceInformation.attendanceRate}%`}
+          change={data.attendanceInformation.change}
+          trend={data.attendanceInformation.trend}
           icon="bi-clipboard-check-fill"
           color="#004aad"
           bgColor="#e7f1ff"
         />
-      </div>
-      <div className="col-md-3">
+    </div>  
+    <div className="col-md-3">
         <MetricCard
           title="Term Revenue"
-          value={`$${data.termRevenue.value.toLocaleString()}`}
-          change={data.termRevenue.change}
-          trend={data.termRevenue.trend}
+          value={`$${data.revenueInformation.revenue}`}
+          change={data.revenueInformation.change}
+          trend={data.revenueInformation.trend}
           icon="bi-cash-coin"
           color="#17a2b8"
           bgColor="#d1ecf1"
         />
-      </div> */}
+      </div>
       {/* <div className="col-md-3">
         <MetricCard
           title="Payment Rate"

@@ -97,30 +97,30 @@ class UtilsTest(TestCase):
         result = collateAnalyticsAmountOfEnrolments(self.term2)
         self.assertEqual(result["amountOfEnrolments"], 120)
         self.assertEqual(result["trend"], "+")
-        self.assertAlmostEqual(result["percentageChangeFromPrevTerm"], 20.0)
+        self.assertAlmostEqual(result["change"], 20.0)
 
     def test_collate_analytics_decrease(self):
         result = collateAnalyticsAmountOfEnrolments(self.term3)
         self.assertEqual(result["amountOfEnrolments"], 80)
         self.assertEqual(result["trend"], "-")
-        self.assertAlmostEqual(result["percentageChangeFromPrevTerm"], -33.333333, places=3)
+        self.assertAlmostEqual(result["change"], -33.333333, places=3)
 
     def test_collate_analytics_no_previous_term(self):
         result = collateAnalyticsAmountOfEnrolments(self.term1)
         self.assertEqual(result["amountOfEnrolments"], 100)
         self.assertIsNone(result["trend"])
-        self.assertIsNone(result["percentageChangeFromPrevTerm"])
+        self.assertIsNone(result["change"])
 
     def test_collate_analytics_previous_term_zero(self):
         self.term1.amountOfEnrolments = lambda: 0
         result = collateAnalyticsAmountOfEnrolments(self.term2)
         self.assertEqual(result["amountOfEnrolments"], 120)
         self.assertEqual(result["trend"], "+")
-        self.assertEqual(result["percentageChangeFromPrevTerm"], 100.0)
+        self.assertEqual(result["change"], 100.0)
 
     def test_collate_analytics_no_change(self):
         self.term2.amountOfEnrolments = lambda: 100
         result = collateAnalyticsAmountOfEnrolments(self.term2)
         self.assertEqual(result["amountOfEnrolments"], 100)
         self.assertEqual(result["trend"], "+")
-        self.assertEqual(result["percentageChangeFromPrevTerm"], 0.0)
+        self.assertEqual(result["change"], 0.0)

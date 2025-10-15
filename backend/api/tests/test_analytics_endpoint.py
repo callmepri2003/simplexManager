@@ -1,17 +1,18 @@
 from rest_framework.test import APITestCase
-from tutoring.models import TutoringTerm, TutoringWeek, TutoringYear
+from tutoring.models import TutoringTerm, TutoringWeek, TutoringYear, Lesson, Group
 
 class AnalyticsEndpointTest(APITestCase):
     def setUp(self):
         self.url = '/api/analytics/'
-        # Create a year
         self.year = TutoringYear.objects.create(index=23)
+        self.group = Group.objects.create(lesson_length=1, tutor="John Doe")
 
         # Create 4 terms with 10 weeks each
         for term_index in range(1, 5):
             term = TutoringTerm.objects.create(index=term_index, year=self.year)
-            for week_index in range(1, 11):  # assuming 10 weeks per term
-                TutoringWeek.objects.create(index=week_index, term=term)
+            for week_index in range(1, 11):
+                week = TutoringWeek.objects.create(index=week_index, term=term)
+                Lesson.objects.create(group=self.group, tutoringWeek=week, date="2025-01-01T00:00:00Z")
 
     def testInvalidTermFormat(self):
         response = self.client.get(self.url, {'term': '2024-01-01'})

@@ -115,7 +115,7 @@ class Lesson(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons")
     notes = models.CharField(max_length=100, null=True, blank=True)
     date = models.DateTimeField()
-    term = models.ForeignKey("TutoringTerm", on_delete=models.PROTECT, related_name='lessons', null=True, blank=True)
+    tutoringWeek = models.ForeignKey("TutoringWeek", on_delete=models.PROTECT, related_name='lessons', null=True, blank=True)
 
 
     def __str__(self):
@@ -214,20 +214,71 @@ class TutoringTerm(models.Model):
     def amountOfEnrolments(self):
         """
         Returns the number of unique tutoring students who attended at least
-        one lesson in this term.
+        one lesson in any week of this term.
         """
-        enrolments = set()  # use a set to ensure uniqueness
-
-        # loop through all lessons in this term
-        for lesson in self.lessons.all():
-            # loop through all attendances of the lesson
-            for attendance in lesson.attendances.all():
-                enrolments.add(attendance.tutoringStudent_id)  # store student ID to avoid duplicates
-
+        enrolments = set()
+        for week in self.weeks.all():
+            for lesson in week.lessons.all():
+                for attendance in lesson.attendances.all():
+                    enrolments.add(attendance.tutoringStudent_id)
         return len(enrolments)
 
     def __str__(self):
         return f"{self.year}T{self.index}"
+    
+    def get_revenue(self):
+        """
+        Calculate the total revenue for this tutoring term by summing all week revenues.
+        Returns the revenue in dollars (Decimal).
+        """
+        from decimal import Decimal
+        
+        total_revenue = Decimal('0.00')
+        for week in self.weeks.all():
+            total_revenue += week.get_revenue()
+        
+        return total_revenue
+    
+    def get_attendance_rate(self):
+        """
+        Calculate the average attendance rate across all weeks in this term.
+        Returns the average percentage, or 0.0 if no weeks have attendance data.
+        """
+        weeks = self.weeks.all()
+        
+        if not weeks.exists():
+            return 0.0
+        
+        total_rate = 0.0
+        weeks_with_data = 0
+        
+        for week in weeks:
+            # Check if week has any lessons
+            if week.lessons.exists():
+                week_rate = week.get_attendance_rate()
+                total_rate += week_rate
+                weeks_with_data += 1
+        
+        if weeks_with_data == 0:
+            return 0.0
+        
+        return total_rate / weeks_with_data
+
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to ensure each term has at least 10 weeks by default.
+        """
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        if is_new:
+            # Create 10 weeks by default for new terms
+            for i in range(1, 11):
+                TutoringWeek.objects.get_or_create(
+                    term=self,
+                    index=i
+                )
 
 class TutoringWeek(models.Model):
     index = models.IntegerField()
@@ -235,4 +286,46 @@ class TutoringWeek(models.Model):
 
     def __str__(self):
         return f"{self.term}W{self.index}"
+
+    def get_revenue(self):
+        """
+        Calculate the total revenue for this tutoring week based on paid invoices.
+        Returns the revenue in dollars (Decimal).
+        """
+        from decimal import Decimal
+        from django.db.models import Sum
+        
+        # Get all attendances for lessons in this week that have paid invoices
+        total_cents = self.lessons.filter(
+            attendances__local_invoice__status='paid',
+            attendances__local_invoice__isnull=False
+        ).aggregate(
+            total=Sum('attendances__local_invoice__amount_paid')
+        )['total']
+        
+        if total_cents is None:
+            return Decimal('0.00')
+        
+        # Convert cents to dollars
+        return Decimal(total_cents) / Decimal('100')
+    
+    def get_attendance_rate(self):
+        """
+        Calculate the attendance rate for this week.
+        Returns the percentage of attendance records marked as present.
+        Returns 0.0 if there are no attendance records.
+        """
+        # Get all attendance records for lessons in this week
+        total_attendances = 0
+        present_attendances = 0
+        
+        for lesson in self.lessons.all():
+            attendances = lesson.attendances.all()
+            total_attendances += attendances.count()
+            present_attendances += attendances.filter(present=True).count()
+        
+        if total_attendances == 0:
+            return 0.0
+        
+        return (present_attendances / total_attendances) * 100
 

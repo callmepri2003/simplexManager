@@ -76,7 +76,10 @@ export default function DashboardPage() {
 
   // Extract data from API response
   const {
-    amount_of_enrolments
+    amount_of_enrolments,
+    revenue_information,
+    attendance_information,
+    weekly_attendance_information
   } = analyticsData;
   console.log(amount_of_enrolments);
   return (
@@ -85,14 +88,17 @@ export default function DashboardPage() {
 
   
       <MetricsCards data={{
-        "amountOfEnrolments": amount_of_enrolments
+        "amountOfEnrolments": amount_of_enrolments,
+        "revenueInformation": revenue_information,
+        "attendanceInformation": attendance_information,
       }} />
 
-      {/* <div className="row g-3 mb-4">
+       <div className="row g-3 mb-4">
         <div className="col-lg-8">
-          <AttendanceTrendsChart data={attendanceData} />
+          <AttendanceTrendsChart data={weekly_attendance_information} />
         </div>
-        <div className="col-lg-4">
+      </div>
+      {/*  <div className="col-lg-4">
           <StudentEngagementChart data={engagementDistribution} />
         </div>
       </div>

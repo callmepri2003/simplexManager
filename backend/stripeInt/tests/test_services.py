@@ -631,6 +631,7 @@ class ServicesTest(StaticLiveServerTestCase):
                 if attempt == max_attempts - 1:
                     raise Exception("Server failed to start")
                 time.sleep(0.5)
-
+    
+    
 def uniquify(targetString):
     return f"{str(uuid.uuid4())[:8]}_{targetString}"

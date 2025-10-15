@@ -10,7 +10,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework import status
 
-from api.utils import collateAnalyticsAmountOfEnrolments, fetch_term, parse_term, validate_term_format
+from api.utils import collateAnalyticsAmountOfEnrolments, collateAnalyticsAttendanceRate, collateAnalyticsRevenue, collateWeeklyAttendanceInformation, fetch_term, parse_term, validate_term_format
 from tutoring.models import Attendance, Group, Lesson, LocalInvoice, Resource, TutoringTerm, TutoringStudent, TutoringWeek, TutoringYear
 from .serializers import AttendanceSerializer, LessonSerializer, MyTokenObtainPairSerializer, GroupSerializer, ResourceSerializer, TutoringStudentSerializer
 from django.db import IntegrityError
@@ -183,7 +183,13 @@ class getBusinessAnalytics(APIView):
 
         # Compute analytics
         amount_of_enrolments = collateAnalyticsAmountOfEnrolments(term_obj)
+        revenue_information = collateAnalyticsRevenue(term_obj)
+        attendance_information = collateAnalyticsAttendanceRate(term_obj)
+        weekly_attendance_information = collateWeeklyAttendanceInformation(term_obj)
 
         return Response({
-            "amount_of_enrolments": amount_of_enrolments
+            "amount_of_enrolments": amount_of_enrolments,
+            "revenue_information": revenue_information,
+            "attendance_information": attendance_information,
+            "weekly_attendance_information": weekly_attendance_information
         }, status=status.HTTP_200_OK)
