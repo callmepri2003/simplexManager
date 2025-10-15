@@ -1,4 +1,4 @@
-from tutoring.models import Parent, LocalInvoice, Attendance, Lesson
+from tutoring.models import Parent, LocalInvoice, Attendance, Lesson, TutoringWeek, TutoringTerm
 import stripe
 import os
 from dotenv import load_dotenv
@@ -10,18 +10,67 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 def generateWeeklyInvoices():
-    generateInvoices(frequency="weekly", amount_of_weeks=1)
+    generateInvoices(frequency="weekly", weeks_to_include=1)
 
 def generateFortnightlyInvoices():
-    generateInvoices(frequency="fortnightly", amount_of_weeks=2)
+    generateInvoices(frequency="fortnightly", weeks_to_include=2)
 
 def generateHalfTermlyInvoices():
-    generateInvoices(frequency="half-termly", amount_of_weeks=5)
+    generateInvoices(frequency="half-termly", weeks_to_include=5)
 
 def generateTermlyInvoices():
-    generateInvoices(frequency="termly", amount_of_weeks=10)
+    generateInvoices(frequency="termly", weeks_to_include=10)
 
-def generateInvoices(*, frequency, amount_of_weeks):
+def get_weeks_to_invoice(weeks_to_include):
+    """
+    Get the TutoringWeeks to invoice based on current date.
+    Returns weeks starting from the current week (or next if current is past).
+    
+    Args:
+        weeks_to_include (int): Number of weeks to include in the invoice
+        
+    Returns:
+        QuerySet of TutoringWeek objects
+    """
+    today = datetime.now().date()
+    
+    # Find the current week (or next upcoming week if we're between terms)
+    current_week = TutoringWeek.objects.filter(
+        monday_date__lte=today,
+        sunday_date__gte=today
+    ).first()
+    
+    if not current_week:
+        # If no current week found, get the next upcoming week
+        current_week = TutoringWeek.objects.filter(
+            monday_date__gt=today
+        ).order_by('monday_date').first()
+        
+        if not current_week:
+            logger.warning("No current or upcoming tutoring weeks found")
+            return TutoringWeek.objects.none()
+    
+    logger.info(f"Current week: {current_week} ({current_week.monday_date} to {current_week.sunday_date})")
+    
+    # Get the term and calculate which weeks to include
+    term = current_week.term
+    current_week_index = current_week.index
+    
+    # Calculate the range of week indices to include
+    end_week_index = current_week_index + weeks_to_include - 1
+    
+    # Get all weeks in the range from the same term
+    weeks = TutoringWeek.objects.filter(
+        term=term,
+        index__gte=current_week_index,
+        index__lte=end_week_index
+    ).order_by('index')
+    
+    logger.info(f"Invoicing weeks {current_week_index} to {end_week_index} in {term}")
+    
+    return weeks
+
+def generateInvoices(*, frequency, weeks_to_include):
     logger.info(f"Starting {frequency} invoice generation")
     
     # Set up Stripe API key
@@ -32,11 +81,15 @@ def generateInvoices(*, frequency, amount_of_weeks):
     
     logger.debug("Stripe API key loaded successfully")
     
-    # Calculate billing period
-    period_start = datetime.now(timezone.utc)
-    period_end = period_start + timedelta(weeks=amount_of_weeks)
+    # Get the weeks to invoice
+    weeks_to_invoice = get_weeks_to_invoice(weeks_to_include)
     
-    logger.info(f"Billing period: {period_start.date()} to {period_end.date()}")
+    if not weeks_to_invoice.exists():
+        logger.warning("No weeks to invoice, exiting")
+        return
+    
+    week_ids = list(weeks_to_invoice.values_list('id', flat=True))
+    logger.info(f"Will invoice {len(week_ids)} weeks: {list(weeks_to_invoice.values_list('index', flat=True))}")
     
     # Get all parents with matching payment frequency
     parents = Parent.objects.filter(payment_frequency=frequency, is_active=True)
@@ -53,39 +106,47 @@ def generateInvoices(*, frequency, amount_of_weeks):
             logger.warning(f"Parent {parent.name} has no active children, skipping")
             continue
         
-        # Collect all attendances for all children in this billing period
+        # Collect all attendances for all children across the specified weeks
         all_attendances = []
         
         for child in children:
             logger.debug(f"Processing child: {child.name} (ID: {child.id})")
             
-            # Get attendances for this child in the billing period
+            # Get attendances for this child from lessons in the specified weeks
             attendances = Attendance.objects.filter(
                 tutoringStudent=child,
-                lesson__date__gte=period_start,
-                lesson__date__lt=period_end,
-                paid=False  # Only invoice unpaid attendances
-            ).select_related('lesson', 'lesson__group', 'lesson__group__associated_product')
+                lesson__tutoringWeek__id__in=week_ids,  # Filter by the specific weeks
+                paid=False,  # Only invoice unpaid attendances
+                local_invoice__isnull=True  # Not already invoiced
+            ).select_related('lesson', 'lesson__group', 'lesson__group__associated_product', 'lesson__tutoringWeek')
             
-            logger.debug(f"Found {attendances.count()} unpaid attendances for {child.name}")
+            logger.debug(f"Found {attendances.count()} unpaid attendances for {child.name} in weeks {list(weeks_to_invoice.values_list('index', flat=True))}")
             all_attendances.extend(attendances)
+        
         
         # Skip if no attendances to invoice
         if not all_attendances:
-            logger.warning(f"No unpaid attendances found for parent {parent.name}, skipping")
+            logger.warning(f"No unpaid attendances found for parent {parent.name} in the selected weeks, skipping")
             continue
         
         try:
+            # Calculate billing period description
+            first_week = weeks_to_invoice.first()
+            last_week = weeks_to_invoice.last()
+            billing_period = f"{first_week.term} Weeks {first_week.index}-{last_week.index}"
+            if first_week.monday_date and last_week.sunday_date:
+                billing_period += f" ({first_week.monday_date.strftime('%d/%m')} - {last_week.sunday_date.strftime('%d/%m/%Y')})"
+            
             # Create Stripe invoice
             invoice = stripe.Invoice.create(
                 customer=parent.stripeId,
                 auto_advance=True,
                 collection_method="send_invoice",
-                days_until_due=amount_of_weeks * 7,
+                days_until_due=weeks_to_include * 7,
                 custom_fields=[
                     {
                         "name": "Billing Period",
-                        "value": calculate_billing_period(amount_of_weeks)
+                        "value": billing_period
                     },
                     {
                         "name": "Payment Frequency",
@@ -95,11 +156,6 @@ def generateInvoices(*, frequency, amount_of_weeks):
             )
             
             logger.info(f"Created Stripe invoice {invoice.id} for parent {parent.name}")
-            
-            # NOTE: We don't create LocalInvoice here anymore!
-            # The webhook (invoice.created) will handle creating the LocalInvoice
-            # We just need to wait a moment for the webhook to process
-            logger.debug(f"Waiting for webhook to create LocalInvoice for Stripe invoice {invoice.id}")
             
             # Group attendances by product for invoice items
             product_quantities = {}
@@ -192,26 +248,17 @@ def generateInvoices(*, frequency, amount_of_weeks):
     
     logger.info(f"Completed {frequency} invoice generation")
 
-def calculate_billing_period(amount_of_weeks):
+def calculate_billing_period_from_weeks(weeks_count):
     """
-    Calculate human-readable billing period from today to today + amount_of_weeks (exclusive end date)
+    Calculate human-readable billing period for a given number of weeks.
     
     Args:
-        amount_of_weeks (int): Number of weeks for the billing period
+        weeks_count (int): Number of weeks for the billing period
         
     Returns:
-        str: Formatted billing period (e.g., "Monday 19th July to Sunday 1st August")
+        str: Formatted billing period (e.g., "Weeks 1-2" or "Weeks 1-5")
     """
-    start_date = datetime.now()
-    end_date = start_date + timedelta(weeks=amount_of_weeks, days=-1)
-    
-    def get_ordinal_suffix(day):
-        if 10 <= day % 100 <= 20:
-            return "th"
-        else:
-            return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-    
-    start_formatted = start_date.strftime(f"%A %d{get_ordinal_suffix(start_date.day)} %B")
-    end_formatted = end_date.strftime(f"%A %d{get_ordinal_suffix(end_date.day)} %B")
-    
-    return f"{start_formatted} to {end_formatted}"
+    if weeks_count == 1:
+        return "1 week"
+    else:
+        return f"{weeks_count} weeks"

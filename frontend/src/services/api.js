@@ -144,6 +144,7 @@ export function useGetGroup(id){
 
 // POST (Bulk)
 export async function postBulkAttendances(attendanceData) {
+  
   try {
     const res = await API.post('/api/attendances/bulk/', attendanceData);
     return res.data; // success
@@ -155,6 +156,7 @@ export async function postBulkAttendances(attendanceData) {
 // PUT (Edit single attendance)
 export async function editAttendance(id, attendanceData) {
   try {
+    alert();
     const res = await API.put(`/api/attendances/${id}/`, attendanceData);
     return res.data;
   } catch (err) {
@@ -303,45 +305,34 @@ export function useGetStudentById(id){
   return [studentData, loading, error]
 }
 
-// ----- Dashboard Services -----
+// ----- Analytics Services -----
 
-// GET dashboard data with optional date range
-export function useGetDashboardData(startDate = null, endDate = null) {
+// GET Analytics for a single term
+export function useGetAnalytics(term) {
+  
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const params = {};
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
+    if (!term) {
+      setLoading(false);
+      return;
+    }
 
-    API.get('/api/dashboard/', { params })
+    API.get(`/api/analytics/`, {
+      params: { term } // pass term as query param
+    })
       .then(res => {
-        setData(res.data);
-      })
+        console.log(res);
+        return setData(res.data)}
+      )
       .catch(err => {
-        console.error("Error fetching dashboard data:", err);
+        console.error("Error fetching analytics:", err);
         setError(err);
       })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [startDate, endDate]);
+      .finally(() => setLoading(false));
+  }, [term]);
 
   return [data, loading, error];
-}
-
-// Manual fetch function (for refreshing data)
-export async function getDashboardData(startDate = null, endDate = null) {
-  try {
-    const params = {};
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
-
-    const res = await API.get('/api/dashboard/', { params });
-    return res.data;
-  } catch (err) {
-    throw err;
-  }
 }

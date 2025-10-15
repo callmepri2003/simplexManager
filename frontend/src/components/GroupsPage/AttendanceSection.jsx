@@ -15,10 +15,12 @@ export default function AttendanceSection({ lesson, students }) {
       setSaveMessage(null); // Clear any previous messages
       try {
         const existingAttendance = lesson.attendances || [];
-        
+
         const attendanceMap = {};
         students.forEach(student => {
-          const existing = existingAttendance.find(a => a.tutoringStudent === student.id);
+          console.log(existingAttendance);
+          const existing = existingAttendance.find(a => a.tutoringStudent.id === student.id);
+          console.log(existing);
           attendanceMap[student.id] = {
             id: existing?.id,
             present: existing?.present || false,
@@ -51,7 +53,9 @@ export default function AttendanceSection({ lesson, students }) {
     setIsSaving(true);
     setSaveMessage(null);
     try {
+      
       const updatePromises = Object.entries(attendance).map(([studentId, data]) => {
+        console.log(studentId);
         const attendanceData = {
           lesson: lessonId,
           tutoringStudent: parseInt(studentId),
