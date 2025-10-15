@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
+
 from decimal import Decimal
 import os
 from django.db import models
@@ -43,7 +45,7 @@ class LocalInvoice(models.Model):
         return self.amount_paid / 100
     
     def __str__(self):
-        return f"Invoice {self.stripeInvoiceId} - {self.status} - ${self.get_amount_in_dollars()}"
+        return f"Invoice {self.stripeInvoiceId} | {self.status.upper()} | ${self.get_amount_in_dollars():.2f} | Customer: {self.customer_stripe_id or 'Unknown'}"
     
     class Meta:
         indexes = [
@@ -107,9 +109,9 @@ class Group(models.Model):
 
     def __str__(self):
         try:
-          return f"{self.course} with {self.tutor} on {self.get_day_of_week_display()} at {self.time_of_day.strftime('%I:%M %p')}"
-        except:
-           return ""
+            return f"{self.course} | {self.tutor} | {self.get_day_of_week_display()} {self.time_of_day.strftime('%I:%M %p')}"
+        except Exception:
+            return f"{self.course or 'Unnamed Group'} | {self.tutor or 'No Tutor'}"
 
 class Lesson(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="lessons")
@@ -119,7 +121,8 @@ class Lesson(models.Model):
 
 
     def __str__(self):
-        return f"Lesson {self.id} - {self.notes or 'No notes'}"
+        week_info = f"{self.tutoringWeek.term}W{self.tutoringWeek.index}" if self.tutoringWeek else "No Week"
+        return f"Lesson {self.id} | {self.group.course if self.group else 'No Group'} | {week_info} | {self.date.strftime('%d %b %Y')} | {self.notes or 'No Notes'}"
 
 @receiver(post_save, sender=Lesson)
 def create_lesson_attendances(sender, instance, created, **kwargs):
@@ -153,6 +156,9 @@ class Resource(models.Model):
             print(f"File storage: {type(self.file.storage)}")
         return result
 
+    def __str__(self):
+        return f"Resource '{self.name}' for Lesson {self.lesson.id if self.lesson else 'Unknown'}"
+
 class Attendance(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendances')
     tutoringStudent = models.ForeignKey("TutoringStudent", on_delete=models.DO_NOTHING, related_name='lessons_attended')
@@ -160,6 +166,18 @@ class Attendance(models.Model):
     present = models.BooleanField(default=False)
     paid = models.BooleanField(default=False)
     local_invoice = models.ForeignKey(LocalInvoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='attendances')
+    def __str__(self):
+        term = week = ""
+        try:
+            term = f"{self.lesson.tutoringWeek.term}" if self.lesson and self.lesson.tutoringWeek else ""
+            week = f"W{self.lesson.tutoringWeek.index}" if self.lesson and self.lesson.tutoringWeek else ""
+        except:
+            pass
+        return (
+            f"Attendance | {self.tutoringStudent.name if self.tutoringStudent else 'Unknown Student'} | "
+            f"{self.lesson.group.course if self.lesson and self.lesson.group else 'No Group'} | "
+            f"{term}{week} | Present: {self.present} | Homework: {self.homework} | Paid: {self.paid}"
+        )
 
 class Parent(models.Model):
     PAYMENT_FREQUENCY_CHOICES = [
@@ -179,7 +197,7 @@ class Parent(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return f"Parent: {self.name} ({self.payment_frequency.capitalize()})"
 
 class TutoringStudent(models.Model):
   name = models.CharField(max_length=100)
@@ -191,17 +209,31 @@ class TutoringStudent(models.Model):
   
 
   def __str__(self):
-      return self.name
+        group_list = ", ".join(g.course for g in self.group.all()) if self.group.exists() else "No Groups"
+        return f"{self.name} | {group_list} | Parent: {self.parent.name}"
 
 class TutoringYear(models.Model):
     index = models.IntegerField()
 
     def __str__(self):
-        return str(self.index)
+        return f"Year {self.index}"
 
 class TutoringTerm(models.Model):
     index = models.IntegerField()
-    year = models.ForeignKey(TutoringYear, on_delete=models.CASCADE, related_name="weeks")
+    year = models.ForeignKey('TutoringYear', on_delete=models.CASCADE, related_name="terms")
+    
+    # Date fields for the term
+    start_date = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Monday of the first week of the term"
+    )
+    end_date = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Sunday of the last week of the term (auto-calculated)"
+    )
+    
     previousTerm = models.ForeignKey(
         "self",  # self-referential
         null=True, 
@@ -264,28 +296,86 @@ class TutoringTerm(models.Model):
         
         return total_rate / weeks_with_data
 
-
     def save(self, *args, **kwargs):
         """
-        Override save to ensure each term has at least 10 weeks by default.
+        Override save to:
+        1. Calculate end_date if start_date is provided
+        2. Create 10 weeks with proper dates for new terms
         """
+        # Calculate end_date if start_date is provided (10 weeks = 69 days from Monday to Sunday)
+        if self.start_date and not self.end_date:
+            # Validate start_date is a Monday
+            if self.start_date.weekday() != 0:
+                from django.core.exceptions import ValidationError
+                raise ValidationError("start_date must be a Monday")
+            
+            # Calculate end_date (10 weeks - 1 day from start, since we start on Monday)
+            self.end_date = self.start_date + timedelta(days=69)
+        
         is_new = self.pk is None
         super().save(*args, **kwargs)
         
-        if is_new:
-            # Create 10 weeks by default for new terms
+        if is_new and self.start_date:
+            # Create 10 weeks with proper dates
+            for i in range(1, 11):
+                week_monday = self.start_date + timedelta(weeks=i-1)
+                week_sunday = week_monday + timedelta(days=6)
+                
+                TutoringWeek.objects.get_or_create(
+                    term=self,
+                    index=i,
+                    defaults={
+                        'monday_date': week_monday,
+                        'sunday_date': week_sunday
+                    }
+                )
+        elif is_new:
+            # Create 10 weeks without dates (legacy support)
             for i in range(1, 11):
                 TutoringWeek.objects.get_or_create(
                     term=self,
                     index=i
                 )
+    
+    def update_week_dates(self, start_date=None):
+        """
+        Update all weeks in this term with correct dates.
+        
+        Args:
+            start_date: Optional override for the term's start_date
+        """
+        if start_date:
+            self.start_date = start_date
+            self.end_date = start_date + timedelta(days=69)
+            self.save()
+        
+        if not self.start_date:
+            raise ValueError("Term must have a start_date to update week dates")
+        
+        weeks = self.weeks.all().order_by('index')
+        
+        for i, week in enumerate(weeks):
+            week_monday = self.start_date + timedelta(weeks=i)
+            week_sunday = week_monday + timedelta(days=6)
+            
+            week.monday_date = week_monday
+            week.sunday_date = week_sunday
+            week.save()
+        
+        return weeks.count()
+
 
 class TutoringWeek(models.Model):
     index = models.IntegerField()
     term = models.ForeignKey(TutoringTerm, on_delete=models.CASCADE, related_name="weeks")
+    monday_date = models.DateField(null=True, blank=True)
+    sunday_date = models.DateField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.term}W{self.index}"
+        date_range = ""
+        if self.monday_date and self.sunday_date:
+            date_range = f" ({self.monday_date.strftime('%d/%m')} - {self.sunday_date.strftime('%d/%m')})"
+        return f"{self.term}W{self.index}{date_range}"
 
     def get_revenue(self):
         """
@@ -328,4 +418,10 @@ class TutoringWeek(models.Model):
             return 0.0
         
         return (present_attendances / total_attendances) * 100
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['monday_date', 'sunday_date']),  # For date range queries
+        ]
+        ordering = ['term', 'index']
 

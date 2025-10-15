@@ -14,7 +14,7 @@ import time
 
 from stripeInt.models import StripeProd
 from django.core.management import call_command
-from tutoring.models import Parent, TutoringStudent, Group, Lesson, Attendance, LocalInvoice
+from tutoring.models import Parent, TutoringStudent, Group, Lesson, Attendance, LocalInvoice, TutoringTerm, TutoringWeek, TutoringYear
 from stripeInt.services import generateInvoices
 import stripe
 
@@ -601,6 +601,115 @@ class ServicesTest(StaticLiveServerTestCase):
                     break
 
         self.assertTrue(back_to_original_invoice_found)
+
+    def test_onlyTheImmediateWeeksInvoiced(self):
+        name1 = uniquify("Jenny Rosen 1")
+        email1 = uniquify("jennyrosen1@example.com")
+        product_name1 = uniquify("Private, In Person")
+
+        self.assertEqual(len(Parent.objects.all()), 0)
+        self.assertEqual(len(StripeProd.objects.all()), 0)
+
+        customer1 = stripe.Customer.create(
+            name = name1,
+            email = email1,
+        )
+
+
+        time.sleep(2)
+
+        self.assertEqual(len(Parent.objects.all()), 1)
+        self.assertEqual(len(StripeProd.objects.all()), 0)
+
+        product1 = stripe.Product.create(
+            name=product_name1,
+        )
+
+        # Create students
+        student1 = TutoringStudent.objects.create(
+            name=uniquify("Test Student1"),
+            parent=Parent.objects.get(name=name1),
+            active=True
+        )
+        
+        time.sleep(3)
+
+        stripe.Price.create(
+            currency="AUD",
+            unit_amount=6000,
+            product=product1.id,
+        )
+
+        time.sleep(3)
+
+        self.assertEqual(len(Parent.objects.all()), 1)
+        self.assertEqual(len(StripeProd.objects.all()), 1)
+
+        product1 = StripeProd.objects.get(name=product_name1)
+
+        group = Group.objects.create(
+            tutor="Test Tutor",
+            course=Group.CourseChoices.YEAR11_ADV,
+            day_of_week=Group.Weekday.MONDAY,
+            time_of_day="14:00:00",
+            lesson_length=1,  # 1 hour lessons
+            associated_product=product1
+        )
+
+        student1.group.add(group)
+
+        parent1 = Parent.objects.get(name=name1)
+        parent1.payment_frequency = 'fortnightly'
+        parent1.save()
+
+        year = TutoringYear.objects.create(index="25")
+        term = TutoringTerm.objects.create(index="4", year=year)
+        # Schedule lessons using management command
+        call_command('set_term', '2025-10-13')
+        self.assertEqual(TutoringWeek.objects.count(), 10)
+        self.assertEqual(Attendance.objects.count(), 10)
+        call_command('generate_fortnightly_invoices')
+
+        self.assertEqual(
+            Attendance.objects.filter(local_invoice__isnull=False).count(), 
+            2
+        )
+        self.assertEqual(
+            Attendance.objects.filter(local_invoice__isnull=True).count(), 
+            8
+        )
+
+        attendance_week_1 = Attendance.objects.select_related(
+            'lesson__tutoringWeek'
+        ).filter(
+            lesson__tutoringWeek__index=1
+        )
+
+        attendance_week_2 = Attendance.objects.select_related(
+            'lesson__tutoringWeek'
+        ).filter(
+            lesson__tutoringWeek__index=2
+        )
+
+        # Combine weeks 1 and 2
+        attendance_week_1_and_2 = Attendance.objects.filter(
+            lesson__tutoringWeek__index__in=[1, 2]
+        )
+
+        # All week 1 & 2 attendances should be invoiced
+        self.assertEqual(
+            attendance_week_1_and_2.filter(local_invoice__isnull=False).count(),
+            attendance_week_1_and_2.count()
+        )
+
+        # All other weeks should NOT be invoiced
+        attendance_other_weeks = Attendance.objects.exclude(
+            lesson__tutoringWeek__index__in=[1, 2]
+        )
+        self.assertEqual(
+            attendance_other_weeks.filter(local_invoice__isnull=True).count(),
+            attendance_other_weeks.count()
+        )
 
 
         '''

@@ -17,7 +17,7 @@ export default function MetricsCards({ data }) {
       <div className="col-md-3">
         <MetricCard
           title="Avg Attendance"
-          value={`${data.attendanceInformation.attendanceRate}%`}
+          value={`${data.attendanceInformation.attendanceRate.toFixed(0)}%`}
           change={data.attendanceInformation.change}
           trend={data.attendanceInformation.trend}
           icon="bi-clipboard-check-fill"

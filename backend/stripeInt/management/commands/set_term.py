@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand, CommandError
-from tutoring.models import Group, Lesson, TutoringTerm, TutoringWeek
+from tutoring.models import Group, Lesson, TutoringStudent, TutoringTerm, TutoringWeek
 import logging
 logger = logging.getLogger(__name__)
 
@@ -20,14 +20,22 @@ class Command(BaseCommand):
         try:
             first_monday = datetime.strptime(start_date, '%Y-%m-%d').date()
             
+            # Validate that the start_date is actually a Monday
+            if first_monday.weekday() != 0:  # 0 = Monday
+                raise CommandError(f'{start_date} is not a Monday. Please provide a Monday date.')
+            
             if term_id:
                 term = TutoringTerm.objects.get(id=term_id)
             else:
                 # Get the current/latest term if not specified
                 term = TutoringTerm.objects.latest('id')
             
+            # Update the term's start_date and recalculate week dates
+            if not term.start_date or term.start_date != first_monday:
+                week_count = term.update_week_dates(first_monday)
+                self.stdout.write(self.style.SUCCESS(f"Updated {week_count} weeks for {term}"))
+            
             if student_id:
-                from tutoring.models import TutoringStudent
                 student = TutoringStudent.objects.get(id=student_id)
                 scheduleTermLessonsForStudent(term, first_monday, student)
                 self.stdout.write(self.style.SUCCESS(f"Lessons scheduled for {student.name} in term {term} (remaining weeks only)"))
@@ -41,6 +49,29 @@ class Command(BaseCommand):
             raise CommandError(f'Student with ID {student_id} not found')
         except Exception as e:
             raise CommandError(f'Command failed: {e}')
+
+
+# def _update_week_dates(term: TutoringTerm, first_monday: datetime.date):
+#     """
+#     Update all weeks in the term with their monday_date and sunday_date.
+    
+#     :param term: TutoringTerm object
+#     :param first_monday: datetime.date of the first Monday of the term
+#     """
+#     weeks = term.weeks.all().order_by('index')
+    
+#     for i, week in enumerate(weeks):
+#         monday = first_monday + timedelta(weeks=i)
+#         sunday = monday + timedelta(days=6)
+        
+#         week.monday_date = monday
+#         week.sunday_date = sunday
+#         week.save()
+        
+#         logger.debug(f"Updated {week} with dates {monday} to {sunday}")
+    
+#     logger.info(f"Updated date ranges for {weeks.count()} weeks in {term}")
+
 
 def scheduleTermLessons(term: TutoringTerm, first_monday: datetime.date):
     """
@@ -79,6 +110,7 @@ def scheduleTermLessons(term: TutoringTerm, first_monday: datetime.date):
         
         logger.info(f"Scheduled {weeks.count()} lessons for {group} in term {term}")
 
+
 def scheduleTermLessonsForStudent(term: TutoringTerm, first_monday: datetime.date, student):
     """
     Creates lessons for a student's groups for remaining weeks in the term.
@@ -101,24 +133,31 @@ def scheduleTermLessonsForStudent(term: TutoringTerm, first_monday: datetime.dat
         logger.error(f"Term {term} has no weeks defined")
         return
     
-    # Determine which week we're currently in (based on today's date)
+    # Determine which week we're currently in based on today's date
     today = datetime.now().date()
-    current_week_index = 1
+    current_week = None
     
     for week in weeks:
-        # Try to find the earliest lesson in this week to determine the week's date
-        lessons_in_week = Lesson.objects.filter(tutoringWeek=week).order_by('date')
-        if lessons_in_week.exists():
-            week_start_date = lessons_in_week.first().date.date()
-            if week_start_date <= today:
-                current_week_index = week.index
-            else:
-                break
+        if week.monday_date <= today <= week.sunday_date:
+            current_week = week
+            break
+        elif today < week.monday_date:
+            # We're before this week starts, so start from this week
+            current_week = week
+            break
+    
+    # If we didn't find a current week, check if we're past the term
+    if current_week is None:
+        if today > weeks.last().sunday_date:
+            logger.warning(f"Cannot enroll {student.name}: term has already ended")
+            return
+        # Otherwise, start from the first week
+        current_week = weeks.first()
     
     # Get weeks from current onwards
-    remaining_weeks = weeks.filter(index__gte=current_week_index)
+    remaining_weeks = weeks.filter(index__gte=current_week.index)
     
-    logger.debug(f"Student {student.name} enrolling at week {current_week_index}, {remaining_weeks.count()} weeks remaining")
+    logger.info(f"Student {student.name} enrolling at week {current_week.index}, {remaining_weeks.count()} weeks remaining")
     
     for group in groups:
         # Calculate the first lesson date for the group
@@ -145,4 +184,4 @@ def scheduleTermLessonsForStudent(term: TutoringTerm, first_monday: datetime.dat
             else:
                 logger.debug(f"Lesson already exists for {group} in {week}")
         
-        logger.info(f"Scheduled {remaining_weeks.count()} lessons for {student.name} in {group} (weeks {current_week_index}-{weeks.last().index})")
+        logger.info(f"Scheduled {remaining_weeks.count()} lessons for {student.name} in {group} (weeks {current_week.index}-{weeks.last().index})")

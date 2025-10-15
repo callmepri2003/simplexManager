@@ -1,7 +1,9 @@
 from datetime import datetime, time, timedelta
 import zoneinfo
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
+from unittest.mock import patch
 
 from tutoring.models import Group, Lesson, TutoringTerm, TutoringYear, TutoringWeek, TutoringStudent, Parent, Attendance
 
@@ -139,6 +141,51 @@ class ScheduleTermLessonsTest(TestCase):
             
             attending_students = set(a.tutoringStudent.id for a in attendances)
             self.assertEqual(attending_students, {student1.id, student2.id})
+    
+    def test_week_dates_set_correctly(self):
+        """Test that TutoringWeek monday_date and sunday_date are set correctly"""
+        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id))
+        
+        weeks = self.term.weeks.all().order_by('index')
+        
+        for i, week in enumerate(weeks):
+            expected_monday = datetime(2024, 3, 4).date() + timedelta(weeks=i)
+            expected_sunday = expected_monday + timedelta(days=6)
+            
+            self.assertEqual(week.monday_date, expected_monday)
+            self.assertEqual(week.sunday_date, expected_sunday)
+    
+    def test_can_query_week_by_date(self):
+        """Test that we can query which week a specific date falls in"""
+        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id))
+        
+        # March 6, 2024 is a Wednesday in the first week
+        test_date = datetime(2024, 3, 6).date()
+        week = TutoringWeek.objects.get(
+            monday_date__lte=test_date,
+            sunday_date__gte=test_date,
+            term=self.term
+        )
+        
+        self.assertEqual(week.index, 1)
+        
+        # March 13, 2024 is a Wednesday in the second week
+        test_date2 = datetime(2024, 3, 13).date()
+        week2 = TutoringWeek.objects.get(
+            monday_date__lte=test_date2,
+            sunday_date__gte=test_date2,
+            term=self.term
+        )
+        
+        self.assertEqual(week2.index, 2)
+    
+    def test_start_date_must_be_monday(self):
+        """Test that command fails if start_date is not a Monday"""
+        # March 5, 2024 is a Tuesday
+        with self.assertRaises(CommandError) as cm:
+            call_command('set_term', '2024-03-05', '--term_id', str(self.term.id))
+        
+        self.assertIn('not a Monday', str(cm.exception))
 
 
 class ScheduleMidTermEnrollmentTest(TestCase):
@@ -158,52 +205,96 @@ class ScheduleMidTermEnrollmentTest(TestCase):
         )
         
         # Schedule full term starting March 4 (Monday)
-        call_command('schedule_lessons', str(self.term.id), '--start_date', '2024-03-04')
+        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id))
         
         # Create a student
         parent = Parent.objects.create(name="Test Parent", stripeId="cus_test")
         self.student = TutoringStudent.objects.create(name="Late Enrollee", parent=parent)
         self.student.group.add(self.group)
     
-    def test_mid_term_enrollment_requires_student_id(self):
-        """Test that --student_id argument is required for mid-term enrollment"""
-        # This should not raise an error but should schedule for all groups
-        call_command('schedule_lessons', str(self.term.id), '--start_date', '2024-03-04')
+    def test_mid_term_enrollment_creates_attendance_records(self):
+        """Test that mid-term enrollment creates attendance records for the student"""
+        # Mock today as being in week 5 (March 31, 2024 - Sunday of week 5)
+        with patch('tutoring.management.commands.set_term.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2024, 3, 31, 12, 0, 0)
+            mock_datetime.strptime = datetime.strptime
+            mock_datetime.combine = datetime.combine
+            
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id), 
+                        '--student_id', str(self.student.id))
         
-        lessons = Lesson.objects.filter(group=self.group).count()
-        self.assertEqual(lessons, 10)
-    
-    def test_mid_term_enrollment_creates_lessons(self):
-        """Test that mid-term enrollment creates lessons for the student"""
-        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id), 
-                    '--student_id', str(self.student.id))
-        
-        # Check that attendance records were created
+        # Should create attendance for weeks 5-10 (6 weeks)
         attendances = Attendance.objects.filter(tutoringStudent=self.student)
-        self.assertGreater(attendances.count(), 0)
+        self.assertEqual(attendances.count(), 6)
     
-    def test_mid_term_enrollment_lessons_in_correct_term(self):
-        """Test that mid-term student's lessons are in the correct term"""
-        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
-                    '--student_id', str(self.student.id))
+    def test_mid_term_enrollment_starts_from_current_week(self):
+        """Test that mid-term enrollment starts from the current week"""
+        # Mock today as being in week 3 (March 18, 2024 - Monday of week 3)
+        with patch('tutoring.management.commands.set_term.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2024, 3, 18, 12, 0, 0)
+            mock_datetime.strptime = datetime.strptime
+            mock_datetime.combine = datetime.combine
+            
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
+                        '--student_id', str(self.student.id))
         
         attendances = Attendance.objects.filter(tutoringStudent=self.student)
-        for attendance in attendances:
-            self.assertEqual(attendance.lesson.tutoringWeek.term, self.term)
+        # Should create attendance for weeks 3-10 (8 weeks)
+        self.assertEqual(attendances.count(), 8)
+        
+        # Verify they're for the correct weeks
+        week_indices = set(a.lesson.tutoringWeek.index for a in attendances)
+        expected_weeks = set(range(3, 11))  # weeks 3-10
+        self.assertEqual(week_indices, expected_weeks)
+    
+    def test_mid_term_enrollment_before_term_starts(self):
+        """Test enrollment before term starts includes all weeks"""
+        # Mock today as being before term (March 1, 2024)
+        with patch('tutoring.management.commands.set_term.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2024, 3, 1, 12, 0, 0)
+            mock_datetime.strptime = datetime.strptime
+            mock_datetime.combine = datetime.combine
+            
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
+                        '--student_id', str(self.student.id))
+        
+        attendances = Attendance.objects.filter(tutoringStudent=self.student)
+        # Should create attendance for all 10 weeks
+        self.assertEqual(attendances.count(), 10)
+    
+    def test_mid_term_enrollment_after_term_ends(self):
+        """Test that enrollment after term ends is handled gracefully"""
+        # Mock today as being after term (May 20, 2024)
+        with patch('tutoring.management.commands.set_term.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2024, 5, 20, 12, 0, 0)
+            mock_datetime.strptime = datetime.strptime
+            mock_datetime.combine = datetime.combine
+            
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
+                        '--student_id', str(self.student.id))
+        
+        # Should create no attendance records
+        attendances = Attendance.objects.filter(tutoringStudent=self.student)
+        self.assertEqual(attendances.count(), 0)
     
     def test_mid_term_enrollment_idempotent(self):
         """Test that running mid-term enrollment twice doesn't duplicate lessons"""
-        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
-                    '--student_id', str(self.student.id))
-        first_count = Attendance.objects.filter(tutoringStudent=self.student).count()
+        with patch('tutoring.management.commands.set_term.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2024, 3, 18, 12, 0, 0)
+            mock_datetime.strptime = datetime.strptime
+            mock_datetime.combine = datetime.combine
+            
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
+                        '--student_id', str(self.student.id))
+            first_count = Attendance.objects.filter(tutoringStudent=self.student).count()
+            
+            # Run again
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
+                        '--student_id', str(self.student.id))
+            second_count = Attendance.objects.filter(tutoringStudent=self.student).count()
         
-        # Run again
-        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
-                    '--student_id', str(self.student.id))
-        second_count = Attendance.objects.filter(tutoringStudent=self.student).count()
-        
-        # Should be same or greater (idempotent)
-        self.assertLessEqual(first_count, second_count)
+        # Should be same (idempotent)
+        self.assertEqual(first_count, second_count)
     
     def test_mid_term_enrollment_multiple_groups(self):
         """Test that mid-term enrollment works for students in multiple groups"""
@@ -214,25 +305,30 @@ class ScheduleMidTermEnrollmentTest(TestCase):
             lesson_length=1,
             time_of_day=time(15, 30)
         )
+        
+        # Schedule lessons for the new group
+        call_command('set_term', '2024-03-04', '--term_id', str(self.term.id))
+        
         self.student.group.add(group2)
         
-        with self._override_today(datetime(2024, 3, 11).date()):
-            call_command('schedule_lessons', str(self.term.id), '--start_date', '2024-03-04',
-                        '--student_id', str(self.student.id))
+        # Mock today as being in week 2 (March 11, 2024)
+        with patch('tutoring.management.commands.set_term.datetime') as mock_datetime:
+            mock_datetime.now.return_value = datetime(2024, 3, 11, 12, 0, 0)
+            mock_datetime.strptime = datetime.strptime
+            mock_datetime.combine = datetime.combine
             
-            attendances = Attendance.objects.filter(tutoringStudent=self.student)
-            # Should have 9 weeks × 2 groups = 18 attendances
-            self.assertEqual(attendances.count(), 18)
+            call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
+                        '--student_id', str(self.student.id))
+        
+        attendances = Attendance.objects.filter(tutoringStudent=self.student)
+        # Should have 9 weeks × 2 groups = 18 attendances (weeks 2-10)
+        self.assertEqual(attendances.count(), 18)
     
     def test_mid_term_enrollment_nonexistent_student(self):
         """Test that command fails gracefully for nonexistent student"""
-        from django.core.management import call_command
-        from django.core.management.base import CommandError
-        
         with self.assertRaises(CommandError):
             call_command('set_term', '2024-03-04', '--term_id', str(self.term.id),
                         '--student_id', '9999')
-
 
 
 class ScheduleLessonsEdgeCasesTest(TestCase):
@@ -274,17 +370,11 @@ class ScheduleLessonsEdgeCasesTest(TestCase):
     
     def test_nonexistent_term(self):
         """Test that command fails gracefully for nonexistent term"""
-        from django.core.management import call_command
-        from django.core.management.base import CommandError
-        
         with self.assertRaises(CommandError):
             call_command('set_term', '2024-03-04', '--term_id', '9999')
     
     def test_start_date_required(self):
         """Test that start_date is required"""
-        from django.core.management import call_command
-        from django.core.management.base import CommandError
-        
         with self.assertRaises(CommandError):
             call_command('set_term', '--term_id', str(self.term.id))
     

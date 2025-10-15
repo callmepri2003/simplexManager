@@ -144,6 +144,7 @@ export function useGetGroup(id){
 
 // POST (Bulk)
 export async function postBulkAttendances(attendanceData) {
+  
   try {
     const res = await API.post('/api/attendances/bulk/', attendanceData);
     return res.data; // success
@@ -155,6 +156,7 @@ export async function postBulkAttendances(attendanceData) {
 // PUT (Edit single attendance)
 export async function editAttendance(id, attendanceData) {
   try {
+    alert();
     const res = await API.put(`/api/attendances/${id}/`, attendanceData);
     return res.data;
   } catch (err) {
