@@ -8,29 +8,31 @@ import GroupPerformanceChart from '../components/DashboardPage/GroupPerformanceC
 import RevenueChart from '../components/DashboardPage/RevenueChart';
 import StudentEngagementChart from '../components/DashboardPage/StudentEngagementChart';
 import TopPerformers from '../components/DashboardPage/TopPerformers';
-import { useGetDashboardData } from '../services/api';
+import { useGetAnalytics } from '../services/api';
 
 export default function DashboardPage() {
-  // Calculate default date range (last 90 days)
-  const [dateRange, setDateRange] = useState(() => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 90);
-    return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
-    };
+  // Default term range: current NSW school term (e.g. "25T3")
+  const [termRange, setTermRange] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear() % 100; // e.g. 2025 → 25
+    const month = now.getMonth() + 1;
+
+    let term;
+    if (month >= 1 && month <= 3) term = 1;        // Jan–Mar → Term 1
+    else if (month >= 4 && month <= 6) term = 2;   // Apr–Jun → Term 2
+    else if (month >= 7 && month <= 9) term = 3;   // Jul–Sep → Term 3
+    else term = 4;                                 // Oct–Dec → Term 4
+
+    return `${year}T${term}`;
   });
 
-  // Fetch dashboard data with the current date range
-  const [dashboardData, loading, error] = useGetDashboardData(
-    dateRange.start,
-    dateRange.end
-  );
+  // Fetch dashboard data with the current NSW school term
+  const [analyticsData, loading, error] = useGetAnalytics(termRange);
+
 
   // Handle date range change
-  const handleDateRangeChange = (newRange) => {
-    setDateRange(newRange);
+  const handleTermChange = (newTerm) => {
+    setTermRange(newTerm);
   };
 
   // Show loading state
@@ -61,42 +63,42 @@ export default function DashboardPage() {
   }
 
   // Show empty state if no data
-  if (!dashboardData) {
-    return (
-      <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-        <div className="alert alert-info" role="alert">
-          <h4 className="alert-heading">No Data Available</h4>
-          <p>There is no dashboard data available for the selected date range.</p>
-        </div>
-      </div>
-    );
-  }
+  // if (!dashboardData) {
+  //   return (
+  //     <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+  //       <div className="alert alert-info" role="alert">
+  //         <h4 className="alert-heading">No Data Available</h4>
+  //         <p>There is no dashboard data available for the selected date range.</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Extract data from API response
   const {
-    metricsData,
-    attendanceData,
-    revenueData,
-    groupPerformance,
-    engagementDistribution,
-    atRiskStudents,
-    topPerformers
-  } = dashboardData;
-
+    amount_of_enrolments,
+    revenue_information,
+    attendance_information,
+    weekly_attendance_information
+  } = analyticsData;
+  console.log(amount_of_enrolments);
   return (
     <div className="container-fluid py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      <DashboardHeader 
-        dateRange={dateRange}
-        onDateRangeChange={handleDateRangeChange}
-      />
+      <DashboardHeader term={termRange} onTermChange={handleTermChange} />
 
-      <MetricsCards data={metricsData} />
+  
+      <MetricsCards data={{
+        "amountOfEnrolments": amount_of_enrolments,
+        "revenueInformation": revenue_information,
+        "attendanceInformation": attendance_information,
+      }} />
 
-      <div className="row g-3 mb-4">
+       <div className="row g-3 mb-4">
         <div className="col-lg-8">
-          <AttendanceTrendsChart data={attendanceData} />
+          <AttendanceTrendsChart data={weekly_attendance_information} />
         </div>
-        <div className="col-lg-4">
+      </div>
+      {/*  <div className="col-lg-4">
           <StudentEngagementChart data={engagementDistribution} />
         </div>
       </div>
@@ -120,7 +122,7 @@ export default function DashboardPage() {
         <div className="col-lg-6">
           <TopPerformers students={topPerformers} />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

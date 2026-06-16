@@ -18,7 +18,7 @@ from .views import (
     getStudentById,
     getAllLessons,
     getLessonById,
-    DashboardView
+    getBusinessAnalytics
 )
 
 # Router
@@ -40,6 +40,6 @@ urlpatterns = [
     path('students/<int:id>/', getStudentById.as_view(), name='getStudentById'),
     path('lessons/all/', getAllLessons.as_view(), name='getAllLessons'),
     path('lessons/detail/<int:id>/', getLessonById.as_view(), name='getLessonById'),
-    path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('analytics/', getBusinessAnalytics.as_view(), name='dashboard'),
     path('', include(router.urls)),
 ]

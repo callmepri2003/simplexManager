@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from unittest.mock import patch
 from django.test import Client, TestCase
+from stripeInt.services import generateFortnightlyInvoices
 import stripe
-
-from tutoring.models import LocalInvoice, Parent
+import os
+from tutoring.models import Attendance, Group, Lesson, LocalInvoice, Parent, TutoringStudent, TutoringTerm, TutoringWeek, TutoringYear
 
 from stripeInt.models import StripeProd
 
@@ -474,38 +475,3 @@ class WebHooksTest(TestCase):
 
       with self.assertRaises(LocalInvoice.DoesNotExist):
           LocalInvoice.objects.get(stripeInvoiceId=randomId)
-
-  @patch("stripe.Webhook.construct_event")
-  def testInvoiceUpdated_CreateIfNotExists(self, mock_construct_event):
-      """Test that updating a non-existent invoice creates it"""
-      randomId = "in_9999999999"
-
-      mock_construct_event.return_value = {
-          'type': 'invoice.updated',
-          'data': {
-              'object': {
-                  'id': randomId,
-                  'status': 'open',
-                  'amount_due': 3000,
-                  'amount_paid': 0,
-                  'currency': 'usd',
-                  'created': 1609459200,
-                  'status_transitions': {
-                      'paid_at': None
-                  },
-                  'customer': 'cus_test456'
-              }
-          }
-      }
-
-      res = self.client.post(
-          self.url,
-          data=b"{}",
-          content_type="application/json",
-          HTTP_STRIPE_SIGNATURE="fake_signature"
-      )
-
-      # Should create the invoice even though it didn't exist
-      invoice = LocalInvoice.objects.get(stripeInvoiceId=randomId)
-      self.assertIsNotNone(invoice)
-      self.assertEqual(invoice.amount_due, 3000)

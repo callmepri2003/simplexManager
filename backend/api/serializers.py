@@ -109,6 +109,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
         fields = '__all__'
+        depth = 2
 
 class ResourceSerializer(serializers.ModelSerializer):
     
@@ -123,11 +124,13 @@ class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = '__all__'
+        depth = 2  # Increase to 2
 
 class TutoringStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TutoringStudent
         fields = '__all__'
+        depth = 2  # Increase to 2
 
 class GroupSerializer(serializers.ModelSerializer):
     associated_product = StripeProdSerializer()

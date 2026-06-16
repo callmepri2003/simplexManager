@@ -12,9 +12,9 @@ export default function MetricCard({ title, value, change, trend, icon, color, b
           </div>
         </div>
         <div className="d-flex align-items-center">
-          <span className={`badge ${trend === 'up' ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${trend === 'up' ? 'text-success' : 'text-danger'} me-2`}>
-            <i className={`bi ${trend === 'up' ? 'bi-arrow-up' : 'bi-arrow-down'} me-1`}></i>
-            {trend === 'up' ? '+' : ''}{change}%
+          <span className={`badge ${trend === '+' ? 'bg-success' : 'bg-danger'} bg-opacity-10 ${trend === '+' ? 'text-success' : 'text-danger'} me-2`}>
+            <i className={`bi ${trend === '+' ? 'bi-arrow-up' : 'bi-arrow-down'} me-1`}></i>
+            {trend === '+' ? '+' : ''}{change}%
           </span>
           <small className="text-muted">vs last term</small>
         </div>
